@@ -520,15 +520,15 @@ export const CategoryCarouselManager: React.FC<CategoryCarouselManagerProps> = (
               <Eye className="w-4 h-4 text-[#C6A36A]" />
               <h4 className="font-bold text-[#2F2B28]">معاينة حية ومباشرة لشريط الكورسيل</h4>
             </div>
-            <span className="text-[10px] text-[#8A7465]">تحديث فوري بحسب الإعدادات المحددة أعلاه</span>
+            <span className="text-[10px] text-[#8A7465]">تحديث فوري بحسب الأنماط والخيارات المحددة أعلاه</span>
           </div>
 
-          <div className="relative overflow-hidden bg-white/60 p-4 rounded-[16px] border border-[#E5D8C9]">
+          <div className="relative overflow-hidden bg-white/70 p-4 rounded-[16px] border border-[#E5D8C9]">
             {/* Subtle Gradient Overlays */}
             {settings.show_gradient_fade && (
               <>
-                <div className="absolute top-0 right-0 bottom-0 w-10 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none" />
-                <div className="absolute top-0 left-0 bottom-0 w-10 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none" />
+                <div className="absolute top-0 right-0 bottom-0 w-12 bg-gradient-to-l from-white/95 to-transparent z-10 pointer-events-none" />
+                <div className="absolute top-0 left-0 bottom-0 w-12 bg-gradient-to-r from-white/95 to-transparent z-10 pointer-events-none" />
               </>
             )}
 
@@ -547,22 +547,159 @@ export const CategoryCarouselManager: React.FC<CategoryCarouselManagerProps> = (
                 } as React.CSSProperties
               }
             >
-              {[...categories, ...categories, ...categories].slice(0, 12).map((cat, idx) => (
-                <div
-                  key={`preview-${cat.id}-${idx}`}
-                  className={`w-[120px] p-2 rounded-[14px] bg-white border border-[#E5D8C9] text-center shrink-0 shadow-2xs`}
-                >
-                  <img
-                    src={cat.image_path}
-                    alt={cat.name_ar}
-                    className="w-full aspect-1/1 object-cover rounded-[10px] mb-1.5"
-                  />
-                  <div className="font-bold text-[11px] text-[#2F2B28] truncate">{cat.name_ar}</div>
-                  {settings.show_item_count && (
-                    <div className="text-[9px] text-[#C6A36A] font-semibold">مقتنيات فاخرة</div>
-                  )}
-                </div>
-              ))}
+              {[...categories, ...categories, ...categories].slice(0, 10).map((cat, idx) => {
+                const isSelected = idx === 0; // Highlight first item as example preview
+                const count = products.filter((p) => p.is_active && p.category_id === cat.id).length;
+                
+                const cardWidth =
+                  settings.card_style === 'circle'
+                    ? 'w-[100px]'
+                    : settings.card_style === 'compact'
+                    ? 'w-[120px]'
+                    : settings.card_style === 'minimal'
+                    ? 'w-[130px]'
+                    : settings.card_style === 'overlay'
+                    ? 'w-[140px]'
+                    : 'w-[150px]';
+
+                const hoverClass =
+                  settings.hover_effect === 'lift'
+                    ? 'hover:-translate-y-1'
+                    : settings.hover_effect === 'glow'
+                    ? 'hover:ring-2 hover:ring-[#C6A36A]/60'
+                    : settings.hover_effect === 'subtle'
+                    ? 'hover:opacity-90'
+                    : 'hover:scale-[1.03]';
+
+                const cardBaseClass = `group relative flex flex-col items-center shrink-0 transition-all text-center select-none cursor-pointer duration-300 ${hoverClass}`;
+
+                let outerClass = cardBaseClass;
+                if (settings.card_style === 'overlay') {
+                  outerClass += ` aspect-[4/5] rounded-[16px] overflow-hidden border ${
+                    isSelected ? 'ring-2 ring-[#C6A36A] border-[#C6A36A]' : 'border-[#E7D4BC]'
+                  }`;
+                } else if (settings.card_style === 'circle') {
+                  outerClass += ` p-1 rounded-[14px]`;
+                } else if (settings.card_style === 'glass') {
+                  outerClass += ` p-2.5 rounded-[16px] backdrop-blur-md border ${
+                    isSelected ? 'bg-white/95 border-[#C6A36A]' : 'bg-white/75 border-white/80'
+                  }`;
+                } else if (settings.card_style === 'minimal') {
+                  outerClass += ` p-2 rounded-[12px] border ${
+                    isSelected ? 'bg-[#F4ECE2] border-[#2F2B28]' : 'bg-white border-[#E5D8C9]'
+                  }`;
+                } else if (settings.card_style === 'compact') {
+                  outerClass += ` p-2 rounded-[12px] border ${
+                    isSelected ? 'bg-[#F4ECE2] border-[#C6A36A]' : 'bg-white border-[#E7D4BC]'
+                  }`;
+                } else {
+                  // luxury
+                  outerClass += ` p-2.5 rounded-[16px] border ${
+                    isSelected ? 'bg-[#F4ECE2] border-[#C6A36A]' : 'bg-white border-[#E7D4BC]'
+                  }`;
+                }
+
+                return (
+                  <div key={`preview-${cat.id}-${idx}`} className={`${cardWidth} ${outerClass}`}>
+                    {/* 1. OVERLAY */}
+                    {settings.card_style === 'overlay' && (
+                      <div className="relative w-full h-full">
+                        <img
+                          src={cat.image_path}
+                          alt={cat.name_ar}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                        {isSelected && settings.show_active_indicator !== false && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#C6A36A] text-white flex items-center justify-center text-[9px] font-bold">
+                            ✓
+                          </div>
+                        )}
+                        {settings.show_item_count && (
+                          <span className="absolute top-1.5 left-1.5 text-[8px] font-bold text-white bg-black/50 px-1.5 py-0.2 rounded-full">
+                            {count}
+                          </span>
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 p-2 text-right">
+                          <span className="text-[11px] font-bold text-white block truncate">
+                            {cat.name_ar}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. CIRCLE */}
+                    {settings.card_style === 'circle' && (
+                      <>
+                        <div
+                          className={`w-16 h-16 rounded-full p-[2px] mb-1.5 relative shrink-0 ${
+                            isSelected
+                              ? 'bg-gradient-to-tr from-[#C6A36A] to-[#2F2B28] ring-2 ring-[#C6A36A]/50'
+                              : 'bg-[#C6A36A]/40'
+                          }`}
+                        >
+                          <div className="w-full h-full rounded-full overflow-hidden bg-white p-0.5">
+                            <img
+                              src={cat.image_path}
+                              alt={cat.name_ar}
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          </div>
+                          {isSelected && settings.show_active_indicator !== false && (
+                            <div className="absolute top-0 right-0 w-4 h-4 rounded-full bg-[#C6A36A] text-white flex items-center justify-center text-[9px] font-bold">
+                              ✓
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-[#2F2B28] truncate w-full">
+                          {cat.name_ar}
+                        </span>
+                        {settings.show_item_count && (
+                          <span className="text-[8px] text-[#8A7465] mt-0.5">
+                            {count} قطع
+                          </span>
+                        )}
+                      </>
+                    )}
+
+                    {/* 3. STANDARD / GLASS / MINIMAL / COMPACT / LUXURY */}
+                    {settings.card_style !== 'overlay' && settings.card_style !== 'circle' && (
+                      <>
+                        <div className="relative w-full aspect-1/1 rounded-[10px] overflow-hidden mb-1.5 bg-[#F4ECE2]">
+                          <img
+                            src={cat.image_path}
+                            alt={cat.name_ar}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-80" />
+                          {isSelected && settings.show_active_indicator !== false && (
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#C6A36A] text-white flex items-center justify-center text-[9px] font-bold">
+                              ✓
+                            </div>
+                          )}
+                          {settings.show_item_count && (
+                            <span className="absolute bottom-1 right-1 text-[8px] font-bold text-white bg-black/50 px-1.5 py-0.2 rounded-full">
+                              {count} قطع
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`text-[11px] font-bold truncate w-full ${
+                            isSelected ? 'text-[#6F584A]' : 'text-[#2F2B28]'
+                          }`}
+                        >
+                          {cat.name_ar}
+                        </span>
+                        {settings.show_description && cat.description_ar && (
+                          <span className="text-[9px] text-[#7C736D] line-clamp-1 mt-0.2">
+                            {cat.description_ar}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
