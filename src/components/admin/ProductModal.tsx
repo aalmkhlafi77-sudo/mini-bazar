@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Check, Palette, Sparkles, Image as ImageIcon } from 'lucide-react';
-import { Product, ProductVariant, Category } from '../../types';
+import { Product, ProductVariant, Category, Brand } from '../../types';
+import { useStore } from '../../context/StoreContext';
 import { ImageUploader } from '../ImageUploader';
 
 interface ProductModalProps {
   product: Product;
   categories: Category[];
+  brands?: Brand[];
   onSave: (product: Product) => void;
   onClose: () => void;
 }
@@ -13,9 +15,12 @@ interface ProductModalProps {
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   categories,
+  brands: propBrands,
   onSave,
   onClose,
 }) => {
+  const { brands: contextBrands } = useStore();
+  const brands = propBrands || contextBrands || [];
   const [formData, setFormData] = useState<Product>({ ...product });
   const [activeSubTab, setActiveSubTab] = useState<'basic' | 'variants' | 'images'>('basic');
 
@@ -153,9 +158,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-[#2F2B28] mb-1">القسم / التصنيف</label>
+                  <label className="block font-semibold text-[#2F2B28] mb-1">القسم / التصنيف *</label>
                   <select
                     value={formData.category_id}
                     onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
@@ -164,6 +169,26 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name_ar}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#2F2B28] mb-1">
+                    العلامة التجارية (البراند)
+                  </label>
+                  <select
+                    value={formData.brand_id || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, brand_id: e.target.value || undefined })
+                    }
+                    className="w-full p-2.5 bg-[#FBF8F3] border border-[#D9C1A7] rounded-[10px]"
+                  >
+                    <option value="">-- بدون براند محدد --</option>
+                    {brands.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name_ar} {b.name_en ? `(${b.name_en})` : ''}
                       </option>
                     ))}
                   </select>

@@ -27,15 +27,18 @@ import {
   LogOut,
   User,
   KeyRound,
+  Award,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Order, OrderStatus, Product, HeroSlide } from '../types';
 import { CategoryManager } from './admin/CategoryManager';
+import { BrandManager } from './admin/BrandManager';
 import { ProductModal } from './admin/ProductModal';
 import { LogoCustomizer } from './admin/LogoCustomizer';
 import { AnnouncementSettingsManager } from './admin/AnnouncementSettingsManager';
 import { FooterSettingsManager } from './admin/FooterSettingsManager';
 import { HeroSlideModal } from './admin/HeroSlideModal';
+import { CategoryCarouselManager } from './admin/CategoryCarouselManager';
 import { ImageUploader } from './ImageUploader';
 import { AdminLoginView } from './admin/AdminLoginView';
 import { AdminSecuritySettings } from './admin/AdminSecuritySettings';
@@ -48,6 +51,7 @@ export const AdminDashboard: React.FC = () => {
     orders,
     products,
     categories,
+    brands,
     updateOrderStatus,
     addManualOrder,
     saveProduct,
@@ -64,7 +68,7 @@ export const AdminDashboard: React.FC = () => {
     setActiveView,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'categories' | 'customize' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'categories' | 'brands' | 'customize' | 'security'>('overview');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
   const [statusChangeNote, setStatusChangeNote] = useState('');
@@ -291,6 +295,18 @@ export const AdminDashboard: React.FC = () => {
         >
           <Layers className="w-4 h-4" />
           <span>إدارة التصنيفات ({categories.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('brands')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'brands'
+              ? 'bg-[#2F2B28] text-white shadow-2xs'
+              : 'bg-[#F4ECE2] text-[#5F5751] hover:bg-[#E7D4BC]'
+          }`}
+        >
+          <Award className="w-4 h-4 text-[#C6A36A]" />
+          <span>العلامات التجارية ({brands.length})</span>
         </button>
 
         <button
@@ -749,6 +765,7 @@ export const AdminDashboard: React.FC = () => {
               <thead className="bg-[#F4ECE2] text-[#2F2B28] font-bold">
                 <tr>
                   <th className="p-3.5">المنتج</th>
+                  <th className="p-3.5">البراند</th>
                   <th className="p-3.5">القسم</th>
                   <th className="p-3.5">الرمز (SKU)</th>
                   <th className="p-3.5">السعر</th>
@@ -759,6 +776,7 @@ export const AdminDashboard: React.FC = () => {
               <tbody className="divide-y divide-[#E5D8C9]">
                 {products.map((p) => {
                   const cat = categories.find((c) => c.id === p.category_id);
+                  const brand = brands.find((b) => b.id === p.brand_id);
                   return (
                     <tr key={p.id} className="hover:bg-[#FBF8F3]">
                       <td className="p-3.5 flex items-center gap-3">
@@ -771,6 +789,15 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-bold text-[#2F2B28] block line-clamp-1">{p.name_ar}</span>
                           <span className="text-[10px] text-[#7C736D]">{p.variants.length} خيارات متغيرات</span>
                         </div>
+                      </td>
+                      <td className="p-3.5">
+                        {brand ? (
+                          <span className="px-2 py-0.5 rounded-[8px] bg-[#F4ECE2] text-[#6F584A] text-[11px] font-bold border border-[#E7D4BC] inline-block">
+                            {brand.name_ar}
+                          </span>
+                        ) : (
+                          <span className="text-[#A49A90] text-[11px]">-</span>
+                        )}
                       </td>
                       <td className="p-3.5 text-[#5F5751]">{cat?.name_ar || '-'}</td>
                       <td className="p-3.5 font-mono text-[#7C736D]">{p.sku}</td>
@@ -818,6 +845,11 @@ export const AdminDashboard: React.FC = () => {
       {/* 4. CATEGORIES MANAGEMENT TAB */}
       {activeTab === 'categories' && (
         <CategoryManager onSuccess={triggerToast} />
+      )}
+
+      {/* 5. BRANDS MANAGEMENT TAB */}
+      {activeTab === 'brands' && (
+        <BrandManager onSuccess={triggerToast} />
       )}
 
       {/* 5. CUSTOMIZATION & THEME STUDIO TAB */}
@@ -1025,6 +1057,9 @@ export const AdminDashboard: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Category Continuous Carousel Tools & Customizer */}
+          <CategoryCarouselManager onSuccess={triggerToast} />
 
           {/* Footer Settings & Social Media Manager */}
           <FooterSettingsManager onSuccess={triggerToast} />

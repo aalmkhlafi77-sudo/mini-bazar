@@ -17,6 +17,18 @@ export interface Category {
   is_active: boolean;
 }
 
+export interface Brand {
+  id: string;
+  name_ar: string;
+  name_en: string;
+  slug: string;
+  description_ar?: string;
+  description_en?: string;
+  logo_path?: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
 export interface ProductVariant {
   id: string;
   product_id: string;
@@ -48,6 +60,7 @@ export interface ProductImage {
 export interface Product {
   id: string;
   category_id: string;
+  brand_id?: string;
   name_ar: string;
   name_en: string;
   slug: string;
@@ -207,6 +220,28 @@ export interface HeroSlide {
   sort_order: number;
 }
 
+export type CategoryCardStyle = 'luxury' | 'glass' | 'minimal' | 'compact' | 'overlay' | 'circle';
+export type CarouselDirection = 'rtl' | 'ltr';
+export type CategoryHoverEffect = 'zoom' | 'lift' | 'glow' | 'subtle';
+
+export interface CategoryCarouselSettings {
+  enabled: boolean;
+  autoplay: boolean;
+  speed: number;
+  pause_on_hover: boolean;
+  direction: CarouselDirection;
+  show_arrows: boolean;
+  show_view_all_button: boolean;
+  card_style: CategoryCardStyle;
+  hover_effect?: CategoryHoverEffect;
+  show_item_count: boolean;
+  show_description: boolean;
+  show_gradient_fade: boolean;
+  show_active_indicator?: boolean;
+  badge_text_ar?: string;
+  title_ar?: string;
+}
+
 export interface StoreSettings {
   store_name_ar: string;
   store_name_en: string;
@@ -227,6 +262,9 @@ export interface StoreSettings {
   instagram_url?: string;
   snapchat_url?: string;
   tiktok_url?: string;
+
+  // Category Carousel Settings
+  category_carousel?: CategoryCarouselSettings;
 
   // WhatsApp & Communications
   whatsapp_default_message?: string;

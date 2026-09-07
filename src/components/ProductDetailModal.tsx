@@ -10,6 +10,7 @@ import {
   Gift,
   MessageCircle,
   AlertCircle,
+  Award,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { ProductVariant } from '../types';
@@ -22,6 +23,8 @@ export const ProductDetailModal: React.FC = () => {
     toggleWishlist,
     isInWishlist,
     categories,
+    brands,
+    setSelectedBrand,
     storeSettings,
   } = useStore();
 
@@ -52,6 +55,7 @@ export const ProductDetailModal: React.FC = () => {
   const isAvailable =
     (activeVariant?.availability_status ?? selectedProduct.availability_status) === 'available';
   const category = categories.find((c) => c.id === selectedProduct.category_id);
+  const brand = brands.find((b) => b.id === selectedProduct.brand_id);
   const isFavorited = isInWishlist(selectedProduct.id);
 
   // Active displayed image respects either the selected gallery thumbnail or selected variant
@@ -165,12 +169,43 @@ export const ProductDetailModal: React.FC = () => {
 
           {/* Product Details & Purchase Controls */}
           <div className="md:col-span-6 p-6 sm:p-8 flex flex-col text-right">
-            {/* Category & SKU */}
+            {/* Category, Brand & SKU */}
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-bold text-[#C6A36A] uppercase tracking-wider">
-                {category?.name_ar || 'مختارات ميني بازار'}
-              </span>
-              <span className="text-xs text-[#7C736D] font-mono">
+              <div className="flex items-center gap-2 flex-wrap">
+                {brand && (
+                  <button
+                    onClick={() => {
+                      setSelectedBrand(brand.id);
+                      setSelectedProduct(null);
+                      const el = document.getElementById('products-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#6F584A] text-xs font-bold border border-[#E7D4BC] transition-colors"
+                    title={`عرض جميع منتجات براند ${brand.name_ar}`}
+                  >
+                    {brand.logo_path && (
+                      <img
+                        src={brand.logo_path}
+                        alt={brand.name_ar}
+                        className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                      />
+                    )}
+                    <Award className="w-3.5 h-3.5 text-[#C6A36A]" />
+                    <span>{brand.name_ar}</span>
+                    {brand.name_en && (
+                      <span className="text-[10px] text-[#8A7465] font-sans font-normal">
+                        ({brand.name_en})
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                <span className="text-xs font-bold text-[#C6A36A] uppercase tracking-wider">
+                  {category?.name_ar || 'مختارات ميني بازار'}
+                </span>
+              </div>
+
+              <span className="text-xs text-[#7C736D] font-mono shrink-0">
                 {activeVariant?.sku || selectedProduct.sku}
               </span>
             </div>

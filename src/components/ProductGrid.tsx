@@ -1,16 +1,36 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { ProductCard } from './ProductCard';
-import { Sparkles, SlidersHorizontal, PackageSearch } from 'lucide-react';
+import { Sparkles, SlidersHorizontal, PackageSearch, Award, X } from 'lucide-react';
 
 export const ProductGrid: React.FC = () => {
-  const { products, selectedCategory, setSelectedCategory, categories, searchQuery, setSearchQuery } = useStore();
+  const {
+    products,
+    selectedCategory,
+    setSelectedCategory,
+    selectedBrand,
+    setSelectedBrand,
+    brands,
+    categories,
+    searchQuery,
+    setSearchQuery,
+  } = useStore();
+
   const [filterType, setFilterType] = useState<'all' | 'best_seller' | 'new'>('all');
 
-  // Filter products by active category, search query, and filter tag
+  const activeCategoryObj = categories.find((c) => c.id === selectedCategory);
+  const activeBrandObj = brands.find((b) => b.id === selectedBrand);
+
+  // Active brands for filter chips
+  const activeBrands = brands
+    .filter((b) => b.is_active)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  // Filter products by active category, active brand, search query, and filter tag
   const filteredProducts = products.filter((p) => {
     if (!p.is_active) return false;
     if (selectedCategory && p.category_id !== selectedCategory) return false;
+    if (selectedBrand && p.brand_id !== selectedBrand) return false;
     if (filterType === 'best_seller' && !p.is_best_seller) return false;
     if (filterType === 'new' && !p.is_new) return false;
 
@@ -20,31 +40,38 @@ export const ProductGrid: React.FC = () => {
       const matchNameEn = p.name_en.toLowerCase().includes(q);
       const matchSku = p.sku.toLowerCase().includes(q);
       const matchDesc = p.description_ar.toLowerCase().includes(q);
-      return matchNameAr || matchNameEn || matchSku || matchDesc;
+      const brandObj = brands.find((b) => b.id === p.brand_id);
+      const matchBrandAr = brandObj ? brandObj.name_ar.toLowerCase().includes(q) : false;
+      const matchBrandEn = brandObj ? brandObj.name_en.toLowerCase().includes(q) : false;
+      return matchNameAr || matchNameEn || matchSku || matchDesc || matchBrandAr || matchBrandEn;
     }
 
     return true;
   });
 
-  const activeCategoryObj = categories.find((c) => c.id === selectedCategory);
-
   return (
     <section id="products-section" className="py-12 px-4 sm:px-8 max-w-7xl mx-auto">
       {/* Header and Filter Controls */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div className="text-right">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-[#C6A36A] mb-1">
             <Sparkles className="w-3.5 h-3.5" />
             <span>مختارات استثنائية</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#2F2B28] font-heading">
-            {activeCategoryObj ? activeCategoryObj.name_ar : 'كتالوج المنتجات المختارة'}
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#2F2B28] font-heading flex items-center gap-2">
+            <span>
+              {activeBrandObj
+                ? `معروضات ${activeBrandObj.name_ar}`
+                : activeCategoryObj
+                ? activeCategoryObj.name_ar
+                : 'كتالوج المنتجات المختارة'}
+            </span>
           </h2>
 
-          {activeCategoryObj && (
+          {(activeBrandObj || activeCategoryObj) && (
             <p className="text-sm text-[#7C736D] mt-1 max-w-2xl">
-              {activeCategoryObj.description_ar}
+              {activeBrandObj?.description_ar || activeCategoryObj?.description_ar}
             </p>
           )}
         </div>
@@ -86,6 +113,82 @@ export const ProductGrid: React.FC = () => {
         </div>
       </div>
 
+      {/* Brand Filters Bar */}
+      {activeBrands.length > 0 && (
+        <div className="mb-8 p-3.5 bg-[#FBF8F3] rounded-[22px] border border-[#E7D4BC] shadow-2xs">
+          <div className="flex items-center justify-between gap-3 mb-2.5 px-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#6F584A]">
+              <Award className="w-4 h-4 text-[#C6A36A]" />
+              <span>تصفية بحسب العلامة التجارية (البراند):</span>
+            </div>
+
+            {(selectedBrand || selectedCategory) && (
+              <button
+                onClick={() => {
+                  setSelectedBrand(null);
+                  setSelectedCategory(null);
+                }}
+                className="text-[11px] text-[#B4574A] hover:underline flex items-center gap-1 font-semibold"
+              >
+                <X className="w-3 h-3" />
+                <span>إلغاء جميع الفلاتر</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
+            <button
+              onClick={() => setSelectedBrand(null)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[12px] text-xs font-bold transition-all shrink-0 ${
+                selectedBrand === null
+                  ? 'bg-[#2F2B28] text-white shadow-xs'
+                  : 'bg-white text-[#5F5751] hover:bg-[#F4ECE2] border border-[#E5D8C9]'
+              }`}
+            >
+              <span>كافة البراندات</span>
+            </button>
+
+            {activeBrands.map((brand) => {
+              const isSelected = selectedBrand === brand.id;
+              const brandProductCount = products.filter(
+                (p) =>
+                  p.is_active &&
+                  p.brand_id === brand.id &&
+                  (!selectedCategory || p.category_id === selectedCategory)
+              ).length;
+
+              return (
+                <button
+                  key={brand.id}
+                  onClick={() => setSelectedBrand(isSelected ? null : brand.id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-[12px] text-xs font-semibold transition-all shrink-0 border ${
+                    isSelected
+                      ? 'bg-[#2F2B28] text-white border-[#2F2B28] shadow-xs'
+                      : 'bg-white text-[#2F2B28] hover:bg-[#F4ECE2] border-[#E5D8C9]'
+                  }`}
+                >
+                  {brand.logo_path && (
+                    <img
+                      src={brand.logo_path}
+                      alt={brand.name_ar}
+                      className="w-4 h-4 rounded-full object-cover shrink-0"
+                    />
+                  )}
+                  <span>{brand.name_ar}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                      isSelected ? 'bg-[#C6A36A] text-[#2F2B28]' : 'bg-[#F4ECE2] text-[#6F584A]'
+                    }`}
+                  >
+                    {brandProductCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Grid of Cards */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -109,6 +212,7 @@ export const ProductGrid: React.FC = () => {
             <button
               onClick={() => {
                 setSelectedCategory(null);
+                setSelectedBrand(null);
                 setSearchQuery('');
                 setFilterType('all');
               }}

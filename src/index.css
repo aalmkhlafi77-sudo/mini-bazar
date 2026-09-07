@@ -85,3 +85,31 @@
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Category continuous carousel track animations */
+@keyframes categoryMarqueeRtl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+@keyframes categoryMarqueeLtr {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.category-marquee-rtl {
+  animation: categoryMarqueeRtl var(--carousel-duration, 28s) linear infinite;
+}
+
+.category-marquee-ltr {
+  animation: categoryMarqueeLtr var(--carousel-duration, 28s) linear infinite;
+}
+
+.category-marquee-paused {
+  animation-play-state: paused !important;
+}
+
+.hover-pause:hover {
+  animation-play-state: paused;
+}
+

@@ -1,6 +1,8 @@
 import {
   AdminCredentials,
+  Brand,
   Category,
+  CategoryCarouselSettings,
   DeliveryMethod,
   HeroSlide,
   PageSection,
@@ -9,6 +11,69 @@ import {
   StoreSettings,
   ThemeSettings,
 } from '../types';
+
+export const initialBrands: Brand[] = [
+  {
+    id: 'brand-chanel',
+    name_ar: 'شانيل (CHANEL)',
+    name_en: 'Chanel',
+    slug: 'chanel',
+    description_ar: 'دار الأزياء الباريسية العريقة للأناقة الخالدة والعطور الراقية.',
+    logo_path: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=400&q=80',
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    id: 'brand-dior',
+    name_ar: 'ديور (DIOR)',
+    name_en: 'Christian Dior',
+    slug: 'dior',
+    description_ar: 'فخامة فرنسية تتجسد في تفاصيل الحقائب والعطور المترفة.',
+    logo_path: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=400&q=80',
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    id: 'brand-rolex',
+    name_ar: 'رولكس (ROLEX)',
+    name_en: 'Rolex',
+    slug: 'rolex',
+    description_ar: 'ساعات سويسرية ميكانيكية استثنائية بدقة لا تضاهى ومظهر أيقوني.',
+    logo_path: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=400&q=80',
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    id: 'brand-cartier',
+    name_ar: 'كارتييه (CARTIER)',
+    name_en: 'Cartier',
+    slug: 'cartier',
+    description_ar: 'صانع الملوك ومجوهرات وساعات الرفاهية العالمية منذ 1847.',
+    logo_path: 'https://images.unsplash.com/photo-1611591475871-33230c14c330?auto=format&fit=crop&w=400&q=80',
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    id: 'brand-ysl',
+    name_ar: 'إيف سان لوران (YSL)',
+    name_en: 'Yves Saint Laurent',
+    slug: 'ysl',
+    description_ar: 'جرأة الأناقة الباريسية والنظارات والمقتنيات الجلدية الأيقونية.',
+    logo_path: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=400&q=80',
+    sort_order: 5,
+    is_active: true,
+  },
+  {
+    id: 'brand-signature',
+    name_ar: 'ميني بازار سيغنتشر (Mini Bazaar Signature)',
+    name_en: 'Mini Bazaar Signature',
+    slug: 'mini-bazaar-signature',
+    description_ar: 'مجموعات ميني بازار الحصرية المجهزة يدوياً وتغليف الهدايا الملكي.',
+    logo_path: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=400&q=80',
+    sort_order: 6,
+    is_active: true,
+  },
+];
 
 export const initialCategories: Category[] = [
   {
@@ -72,6 +137,7 @@ export const initialProducts: Product[] = [
   {
     id: 'prod-1',
     category_id: 'cat-bags',
+    brand_id: 'brand-chanel',
     name_ar: 'حقيبة يد ليدي باج عاجية بلمسة ذهبية',
     name_en: 'Ivory Royal Lady Handbag',
     slug: 'ivory-royal-lady-handbag',
@@ -147,6 +213,7 @@ export const initialProducts: Product[] = [
   {
     id: 'prod-2',
     category_id: 'cat-watches',
+    brand_id: 'brand-rolex',
     name_ar: 'ساعة تيمبو ذهبية كلاسيكية بسوار شبكي',
     name_en: 'Timeless Gold Mesh Classic Watch',
     slug: 'timeless-gold-mesh-watch',
@@ -222,6 +289,7 @@ export const initialProducts: Product[] = [
   {
     id: 'prod-3',
     category_id: 'cat-perfumes',
+    brand_id: 'brand-dior',
     name_ar: 'عطر لوميير المركز — زهور البرغموت والعنبر الدافئ',
     name_en: 'Lumière Extrait de Parfum 100ml',
     slug: 'lumiere-extrait-de-parfum',
@@ -279,6 +347,7 @@ export const initialProducts: Product[] = [
   {
     id: 'prod-4',
     category_id: 'cat-eyewear',
+    brand_id: 'brand-ysl',
     name_ar: 'نظارات شمسية كات آي عسلية بإطار ذهبي ناعم',
     name_en: 'Honey Amber Cat-Eye Sunglasses',
     slug: 'honey-amber-cat-eye-sunglasses',
@@ -345,6 +414,7 @@ export const initialProducts: Product[] = [
   {
     id: 'prod-5',
     category_id: 'cat-bags',
+    brand_id: 'brand-chanel',
     name_ar: 'حقيبة تسوق توت رملية مصممة للعمل والأناقة',
     name_en: 'Sand Dune Leather Structured Tote',
     slug: 'sand-dune-structured-tote',
@@ -393,6 +463,7 @@ export const initialProducts: Product[] = [
   {
     id: 'prod-6',
     category_id: 'cat-accessories',
+    brand_id: 'brand-cartier',
     name_ar: 'سوار أورورا ذهبي عيار 18 بتصميم مفتوح ناعم',
     name_en: 'Aurora 18K Gold Finish Cuff',
     slug: 'aurora-gold-finish-cuff',
@@ -572,6 +643,22 @@ export const initialPaymentMethods: PaymentMethod[] = [
   },
 ];
 
+export const initialCategoryCarouselSettings: CategoryCarouselSettings = {
+  enabled: true,
+  autoplay: true,
+  speed: 28,
+  pause_on_hover: true,
+  direction: 'rtl',
+  show_arrows: true,
+  show_view_all_button: true,
+  card_style: 'luxury',
+  show_item_count: true,
+  show_description: true,
+  show_gradient_fade: true,
+  badge_text_ar: 'مجموعات مختارة بعناية',
+  title_ar: 'تصنيفات ميني بازار الفاخرة',
+};
+
 export const initialStoreSettings: StoreSettings = {
   store_name_ar: 'ميني بازار',
   store_name_en: 'Mini Bazaar',
@@ -590,6 +677,9 @@ export const initialStoreSettings: StoreSettings = {
   instagram_url: 'https://instagram.com/minibazaar',
   snapchat_url: 'https://snapchat.com/add/minibazaar',
   tiktok_url: 'https://tiktok.com/@minibazaar',
+
+  // Category Continuous Carousel Settings
+  category_carousel: initialCategoryCarouselSettings,
 
   // WhatsApp & Communication
   whatsapp_default_message: 'مرحباً بوتيك ميني بازار، أود الاستفسار عن المقتنيات الفاخرة والمساعدة في الطلب.',

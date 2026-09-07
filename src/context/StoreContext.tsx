@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   AdminCredentials,
+  Brand,
   Category,
   Product,
   CartItem,
@@ -14,6 +15,7 @@ import {
   CustomerAddress,
 } from '../types';
 import {
+  initialBrands,
   initialCategories,
   initialProducts,
   initialHeroSlides,
@@ -53,9 +55,12 @@ interface StoreContextType {
 
   // Catalog & Navigation
   categories: Category[];
+  brands: Brand[];
   products: Product[];
   selectedCategory: string | null;
   setSelectedCategory: (catId: string | null) => void;
+  selectedBrand: string | null;
+  setSelectedBrand: (brandId: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   selectedProduct: Product | null;
@@ -118,6 +123,8 @@ interface StoreContextType {
   deleteProduct: (productId: string) => void;
   saveCategory: (category: Category) => void;
   deleteCategory: (categoryId: string) => void;
+  saveBrand: (brand: Brand) => void;
+  deleteBrand: (brandId: string) => void;
 
   // Language
   language: 'ar' | 'en';
@@ -175,6 +182,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [categories, setCategories] = useState<Category[]>(() => {
     const saved = localStorage.getItem('mb_categories');
     return saved ? JSON.parse(saved) : initialCategories;
+  });
+
+  const [brands, setBrands] = useState<Brand[]>(() => {
+    const saved = localStorage.getItem('mb_brands');
+    return saved ? JSON.parse(saved) : initialBrands;
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
@@ -302,6 +314,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeView, setActiveView] = useState<'store' | 'product' | 'checkout' | 'order-success' | 'wishlist' | 'admin' | 'policy'>('store');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activePolicy, setActivePolicy] = useState<string | null>(null);
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
@@ -615,6 +628,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  // Brand CRUD
+  const saveBrand = (brandToSave: Brand) => {
+    setBrands((prev) => {
+      const idx = prev.findIndex((b) => b.id === brandToSave.id);
+      let updated: Brand[];
+      if (idx > -1) {
+        updated = [...prev];
+        updated[idx] = brandToSave;
+      } else {
+        updated = [...prev, brandToSave];
+      }
+      localStorage.setItem('mb_brands', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const deleteBrand = (brandId: string) => {
+    setBrands((prev) => {
+      const updated = prev.filter((b) => b.id !== brandId);
+      localStorage.setItem('mb_brands', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   // Policy modal/view
   const openPolicy = (policyKey: string) => {
     setActivePolicy(policyKey);
@@ -881,9 +918,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         resetAdminCredentialsToDefault,
 
         categories,
+        brands,
         products,
         selectedCategory,
         setSelectedCategory,
+        selectedBrand,
+        setSelectedBrand,
         searchQuery,
         setSearchQuery,
         selectedProduct,
@@ -931,6 +971,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteProduct,
         saveCategory,
         deleteCategory,
+        saveBrand,
+        deleteBrand,
 
         language,
         setLanguage,

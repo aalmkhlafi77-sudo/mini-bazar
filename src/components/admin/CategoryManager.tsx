@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Check, X, Layers, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, Layers, Image as ImageIcon, Sliders } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Category } from '../../types';
 import { ImageUploader } from '../ImageUploader';
+import { CategoryCarouselManager } from './CategoryCarouselManager';
 
 interface CategoryManagerProps {
   onSuccess: () => void;
@@ -11,6 +12,7 @@ interface CategoryManagerProps {
 export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) => {
   const { categories, products, saveCategory, deleteCategory } = useStore();
 
+  const [activeSubTab, setActiveSubTab] = useState<'categories' | 'carousel'>('categories');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -69,8 +71,41 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
 
   return (
     <div className="space-y-6 text-right">
-      {/* Header and Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Sub-tabs Navigation */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#F4ECE2] rounded-[16px] border border-[#E5D8C9] w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('categories')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-[12px] text-xs font-bold transition-all ${
+            activeSubTab === 'categories'
+              ? 'bg-[#2F2B28] text-white shadow-xs'
+              : 'text-[#6F584A] hover:bg-[#E7D4BC]'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-[#C6A36A]" />
+          <span>إدارة الأقسام والكتالوج ({categories.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('carousel')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-[12px] text-xs font-bold transition-all ${
+            activeSubTab === 'carousel'
+              ? 'bg-[#2F2B28] text-white shadow-xs'
+              : 'text-[#6F584A] hover:bg-[#E7D4BC]'
+          }`}
+        >
+          <Sliders className="w-4 h-4 text-[#C6A36A]" />
+          <span>تخصيص كورسيل التصنيفات المتحرك (Carousel)</span>
+        </button>
+      </div>
+
+      {activeSubTab === 'carousel' ? (
+        <CategoryCarouselManager onSuccess={onSuccess} />
+      ) : (
+        <>
+          {/* Header and Add Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Layers className="w-4 h-4 text-[#C6A36A]" />
@@ -170,6 +205,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
           </tbody>
         </table>
       </div>
+      </>
+      )}
 
       {/* MODAL: ADD / EDIT CATEGORY */}
       {isModalOpen && editingCategory && (

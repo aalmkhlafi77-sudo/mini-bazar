@@ -8,7 +8,16 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart, toggleWishlist, isInWishlist, categories, setSelectedProduct, storeSettings } = useStore();
+  const {
+    addToCart,
+    toggleWishlist,
+    isInWishlist,
+    categories,
+    brands,
+    setSelectedProduct,
+    setSelectedBrand,
+    storeSettings,
+  } = useStore();
 
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
     product.variants.find((v) => v.is_default)?.id || product.variants[0]?.id || ''
@@ -20,6 +29,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const isFavorited = isInWishlist(product.id);
   const category = categories.find((c) => c.id === product.category_id);
+  const brand = brands.find((b) => b.id === product.brand_id);
   const isAvailable = (activeVariant?.availability_status ?? product.availability_status) === 'available';
 
   const activePrice = activeVariant?.price ?? product.price;
@@ -131,13 +141,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       {/* 2. Content Body */}
       <div className="flex flex-col flex-1 p-4 sm:p-5 text-right">
-        {/* Category & Rating */}
+        {/* Category & Brand & Rating */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-[11px] font-semibold text-[#C6A36A] uppercase tracking-wider">
-            {category?.name_ar || 'مختارات ميني بازار'}
-          </span>
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            {brand && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedBrand(brand.id);
+                  const el = document.getElementById('products-section');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-[10px] font-bold text-[#6F584A] bg-[#F4ECE2] hover:bg-[#E7D4BC] px-2 py-0.5 rounded-[6px] border border-[#E7D4BC] truncate transition-colors"
+                title={`تصفية حسب براند ${brand.name_ar}`}
+              >
+                {brand.name_ar}
+              </span>
+            )}
+            <span className="text-[11px] font-semibold text-[#C6A36A] uppercase tracking-wider truncate">
+              {category?.name_ar || 'مختارات ميني بازار'}
+            </span>
+          </div>
 
-          <div className="flex items-center gap-1 text-[11px] text-[#8A7465]">
+          <div className="flex items-center gap-1 text-[11px] text-[#8A7465] shrink-0">
             <Star className="w-3.5 h-3.5 fill-[#C6A36A] text-[#C6A36A]" />
             <span className="font-bold text-[#2F2B28]">{product.rating.toFixed(1)}</span>
             <span className="text-[#7C736D]">({product.reviews_count})</span>
