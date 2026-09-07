@@ -1,4 +1,5 @@
 import {
+  AdminCredentials,
   Category,
   DeliveryMethod,
   HeroSlide,
@@ -768,3 +769,18 @@ export const initialPageSections: PageSection[] = [
   { id: 'contact_whatsapp', type: 'contact_whatsapp', title_ar: 'التواصل والواتساب', is_visible: true, sort_order: 9 },
   { id: 'footer', type: 'footer', title_ar: 'التذييل وروابط السياسات', is_visible: true, sort_order: 10 },
 ];
+
+export const initialAdminCredentials: AdminCredentials = {
+  username: 'admin',
+  // Cryptographically hashed (SHA-256 + salt) - No plain-text passwords stored in git repository
+  password_hash: '7bb3998a1eb2f8bf56633784f5ddd3e9c76ac084b9b76605444186451113b177',
+  password_salt: 'mb_s_9f4b1a82',
+  security_question: 'ما هو اسم المتجر بالعربية؟',
+  security_answer_hash: 'ede5ebe8321fa578920160f2c5b4c90612f0ff239b99121036dd8a8f46395511',
+  security_answer_salt: 'mb_s_9f4b1a82',
+  recovery_email: 'admin@minibazaar.com',
+  recovery_pin_hash: '8df62270915a6c3eb8323b0d0cd649da17209ca6fa84b9a3eb6ed7077bba149d',
+  recovery_pin_salt: 'mb_s_9f4b1a82',
+  last_updated: new Date().toISOString(),
+};
+

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
+  AdminCredentials,
   Category,
   Product,
   CartItem,
@@ -20,9 +21,36 @@ import {
   initialPaymentMethods,
   initialStoreSettings,
   initialThemeSettings,
+  initialAdminCredentials,
 } from '../data/initialData';
+import {
+  computeSaltedHashSync,
+  verifySaltedHashSync,
+  generateRandomSalt,
+} from '../utils/security';
 
 interface StoreContextType {
+  // Admin Authentication & Security
+  adminCredentials: AdminCredentials;
+  isAdminAuthenticated: boolean;
+  loginAdmin: (username: string, password: string, rememberMe?: boolean) => { success: boolean; error?: string };
+  logoutAdmin: () => void;
+  recoverAdminPassword: (params: {
+    identifier: string;
+    securityAnswer?: string;
+    recoveryPin?: string;
+    newPassword: string;
+  }) => { success: boolean; error?: string };
+  updateAdminUsername: (newUsername: string) => { success: boolean; error?: string };
+  updateAdminPassword: (currentPassword: string, newPassword: string) => { success: boolean; error?: string };
+  updateAdminSecurity: (securityData: {
+    security_question?: string;
+    security_answer?: string;
+    recovery_email?: string;
+    recovery_pin?: string;
+  }) => { success: boolean; error?: string };
+  resetAdminCredentialsToDefault: () => void;
+
   // Catalog & Navigation
   categories: Category[];
   products: Product[];
@@ -99,6 +127,50 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Admin Credentials & Authentication State with automatic security migration
+  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>(() => {
+    const saved = localStorage.getItem('mb_admin_credentials');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Automatic security migration: if legacy plaintext exists, hash it immediately
+        if (parsed.password && !parsed.password_hash) {
+          const passSalt = generateRandomSalt(16);
+          const answerSalt = generateRandomSalt(16);
+          const pinSalt = generateRandomSalt(16);
+
+          const secured: AdminCredentials = {
+            username: parsed.username || 'admin',
+            password_hash: computeSaltedHashSync(parsed.password, passSalt),
+            password_salt: passSalt,
+            security_question: parsed.security_question || 'ما هو اسم المتجر بالعربية؟',
+            security_answer_hash: computeSaltedHashSync(parsed.security_answer || 'ميني بازار', answerSalt),
+            security_answer_salt: answerSalt,
+            recovery_email: parsed.recovery_email || 'admin@minibazaar.com',
+            recovery_pin_hash: computeSaltedHashSync(parsed.recovery_pin || '2026', pinSalt),
+            recovery_pin_salt: pinSalt,
+            last_updated: new Date().toISOString(),
+          };
+          localStorage.setItem('mb_admin_credentials', JSON.stringify(secured));
+          return secured;
+        }
+        return {
+          ...initialAdminCredentials,
+          ...parsed,
+        };
+      } catch {
+        return initialAdminCredentials;
+      }
+    }
+    return initialAdminCredentials;
+  });
+
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    const localSession = localStorage.getItem('mb_admin_auth_session');
+    const tempSession = sessionStorage.getItem('mb_admin_auth_session');
+    return Boolean(localSession || tempSession);
+  });
+
   // State initialization with localStorage fallback
   const [categories, setCategories] = useState<Category[]>(() => {
     const saved = localStorage.getItem('mb_categories');
@@ -549,9 +621,265 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setActiveView('policy');
   };
 
+  // ================= ADMIN AUTHENTICATION & SECURITY =================
+  const loginAdmin = (username: string, password: string, rememberMe = true) => {
+    const trimmedUsername = username.trim().toLowerCase();
+    const storedUsername = adminCredentials.username.trim().toLowerCase();
+
+    // Verify username match
+    if (trimmedUsername !== storedUsername) {
+      return {
+        success: false,
+        error: 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات والمحاولة مجدداً.',
+      };
+    }
+
+    // Verify salted cryptographic hash
+    const isPasswordValid = verifySaltedHashSync(
+      password,
+      adminCredentials.password_hash,
+      adminCredentials.password_salt
+    );
+
+    if (isPasswordValid) {
+      setIsAdminAuthenticated(true);
+      const sessionData = JSON.stringify({
+        isAuthenticated: true,
+        username: adminCredentials.username,
+        loggedInAt: new Date().toISOString(),
+      });
+
+      if (rememberMe) {
+        localStorage.setItem('mb_admin_auth_session', sessionData);
+        sessionStorage.removeItem('mb_admin_auth_session');
+      } else {
+        sessionStorage.setItem('mb_admin_auth_session', sessionData);
+        localStorage.removeItem('mb_admin_auth_session');
+      }
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      error: 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات والمحاولة مجدداً.',
+    };
+  };
+
+  const logoutAdmin = () => {
+    setIsAdminAuthenticated(false);
+    localStorage.removeItem('mb_admin_auth_session');
+    sessionStorage.removeItem('mb_admin_auth_session');
+  };
+
+  const recoverAdminPassword = (params: {
+    identifier: string;
+    securityAnswer?: string;
+    recoveryPin?: string;
+    newPassword: string;
+  }) => {
+    const { identifier, securityAnswer, recoveryPin, newPassword } = params;
+    const cleanId = identifier.trim().toLowerCase();
+    const storedUser = adminCredentials.username.trim().toLowerCase();
+    const storedEmail = adminCredentials.recovery_email.trim().toLowerCase();
+
+    // Check identifier
+    const isIdMatch = cleanId === storedUser || cleanId === storedEmail;
+    if (!isIdMatch) {
+      return {
+        success: false,
+        error: 'اسم المستخدم أو البريد الإلكتروني المدخل غير مسجل في النظام.',
+      };
+    }
+
+    // Check verification using salted hashes
+    const isAnswerMatch =
+      Boolean(securityAnswer) &&
+      verifySaltedHashSync(
+        securityAnswer!,
+        adminCredentials.security_answer_hash,
+        adminCredentials.security_answer_salt
+      );
+
+    const isPinMatch =
+      Boolean(recoveryPin) &&
+      verifySaltedHashSync(
+        recoveryPin!,
+        adminCredentials.recovery_pin_hash,
+        adminCredentials.recovery_pin_salt
+      );
+
+    if (!isAnswerMatch && !isPinMatch) {
+      return {
+        success: false,
+        error: 'إجابة سؤال الأمان أو رمز الأمان للاسترداد غير متطابق. يرجى إعادة التحقق.',
+      };
+    }
+
+    if (!newPassword || newPassword.length < 4) {
+      return {
+        success: false,
+        error: 'كلمة المرور الجديدة يجب أن تحتوي على 4 خانات على الأقل.',
+      };
+    }
+
+    // Generate new cryptographic salt and hash for new password
+    const newPassSalt = generateRandomSalt(16);
+    const updated: AdminCredentials = {
+      ...adminCredentials,
+      password_hash: computeSaltedHashSync(newPassword, newPassSalt),
+      password_salt: newPassSalt,
+      last_updated: new Date().toISOString(),
+    };
+
+    // Remove any legacy plaintext fields
+    delete updated.password;
+    delete updated.security_answer;
+    delete updated.recovery_pin;
+
+    setAdminCredentials(updated);
+    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+    setIsAdminAuthenticated(true);
+    localStorage.setItem(
+      'mb_admin_auth_session',
+      JSON.stringify({
+        isAuthenticated: true,
+        username: updated.username,
+        loggedInAt: new Date().toISOString(),
+      })
+    );
+
+    return { success: true };
+  };
+
+  const updateAdminUsername = (newUsername: string) => {
+    const trimmed = newUsername.trim();
+    if (!trimmed || trimmed.length < 3) {
+      return { success: false, error: 'اسم المستخدم يجب ألا يقل عن 3 أحرف.' };
+    }
+
+    const updated: AdminCredentials = {
+      ...adminCredentials,
+      username: trimmed,
+      last_updated: new Date().toISOString(),
+    };
+
+    // Remove legacy plaintext fields
+    delete updated.password;
+    delete updated.security_answer;
+    delete updated.recovery_pin;
+
+    setAdminCredentials(updated);
+    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+
+    // Update active session username
+    const currentSession = localStorage.getItem('mb_admin_auth_session') || sessionStorage.getItem('mb_admin_auth_session');
+    if (currentSession) {
+      const parsed = JSON.parse(currentSession);
+      const newSession = JSON.stringify({ ...parsed, username: trimmed });
+      if (localStorage.getItem('mb_admin_auth_session')) {
+        localStorage.setItem('mb_admin_auth_session', newSession);
+      } else {
+        sessionStorage.setItem('mb_admin_auth_session', newSession);
+      }
+    }
+
+    return { success: true };
+  };
+
+  const updateAdminPassword = (currentPassword: string, newPassword: string) => {
+    const isCurrentValid = verifySaltedHashSync(
+      currentPassword,
+      adminCredentials.password_hash,
+      adminCredentials.password_salt
+    );
+
+    if (!isCurrentValid) {
+      return { success: false, error: 'كلمة المرور الحالية غير صحيحة.' };
+    }
+
+    if (!newPassword || newPassword.length < 4) {
+      return { success: false, error: 'كلمة المرور الجديدة يجب أن تتكون من 4 خانات على الأقل.' };
+    }
+
+    const newPassSalt = generateRandomSalt(16);
+    const updated: AdminCredentials = {
+      ...adminCredentials,
+      password_hash: computeSaltedHashSync(newPassword, newPassSalt),
+      password_salt: newPassSalt,
+      last_updated: new Date().toISOString(),
+    };
+
+    // Remove legacy plaintext fields
+    delete updated.password;
+    delete updated.security_answer;
+    delete updated.recovery_pin;
+
+    setAdminCredentials(updated);
+    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+
+    return { success: true };
+  };
+
+  const updateAdminSecurity = (securityData: {
+    security_question?: string;
+    security_answer?: string;
+    recovery_email?: string;
+    recovery_pin?: string;
+  }) => {
+    let newAnswerHash = adminCredentials.security_answer_hash;
+    let newAnswerSalt = adminCredentials.security_answer_salt;
+    if (securityData.security_answer && securityData.security_answer.trim()) {
+      newAnswerSalt = generateRandomSalt(16);
+      newAnswerHash = computeSaltedHashSync(securityData.security_answer, newAnswerSalt);
+    }
+
+    let newPinHash = adminCredentials.recovery_pin_hash;
+    let newPinSalt = adminCredentials.recovery_pin_salt;
+    if (securityData.recovery_pin && securityData.recovery_pin.trim()) {
+      newPinSalt = generateRandomSalt(16);
+      newPinHash = computeSaltedHashSync(securityData.recovery_pin, newPinSalt);
+    }
+
+    const updated: AdminCredentials = {
+      ...adminCredentials,
+      security_question: securityData.security_question ?? adminCredentials.security_question,
+      security_answer_hash: newAnswerHash,
+      security_answer_salt: newAnswerSalt,
+      recovery_email: securityData.recovery_email ?? adminCredentials.recovery_email,
+      recovery_pin_hash: newPinHash,
+      recovery_pin_salt: newPinSalt,
+      last_updated: new Date().toISOString(),
+    };
+
+    // Remove legacy plaintext fields
+    delete updated.password;
+    delete updated.security_answer;
+    delete updated.recovery_pin;
+
+    setAdminCredentials(updated);
+    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+
+    return { success: true };
+  };
+
+  const resetAdminCredentialsToDefault = () => {
+    setAdminCredentials(initialAdminCredentials);
+    localStorage.setItem('mb_admin_credentials', JSON.stringify(initialAdminCredentials));
+  };
+
   return (
     <StoreContext.Provider
       value={{
+        adminCredentials,
+        isAdminAuthenticated,
+        loginAdmin,
+        logoutAdmin,
+        recoverAdminPassword,
+        updateAdminUsername,
+        updateAdminPassword,
+        updateAdminSecurity,
+        resetAdminCredentialsToDefault,
+
         categories,
         products,
         selectedCategory,

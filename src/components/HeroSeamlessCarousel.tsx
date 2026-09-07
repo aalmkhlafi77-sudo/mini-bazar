@@ -49,7 +49,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
     };
   }, [nextSlide, isPaused, themeSettings.carousel_autoplay, themeSettings.carousel_interval, totalSlides]);
 
-  // Keyboard navigation (Arrow keys for shifting right and left)
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
@@ -109,6 +109,15 @@ export const HeroSeamlessCarousel: React.FC = () => {
   const isPulsingActive =
     themeSettings.hero_pulse_animation !== false && slide.pulse_animation !== false;
 
+  const isFullBackground =
+    slide.layout_type === 'full_background' ||
+    Boolean(slide.background_image && slide.layout_type !== 'split');
+
+  const fullBgImage = slide.background_image || (isFullBackground ? slide.desktop_image : undefined);
+
+  // Overlay opacity calculation
+  const overlayPercent = slide.overlay_opacity !== undefined ? slide.overlay_opacity : (isFullBackground ? 40 : 15);
+
   return (
     <section
       className="relative w-full overflow-hidden bg-[#FBF8F3] border-b border-[#E5D8C9]"
@@ -118,7 +127,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
       onBlur={() => setIsPaused(false)}
       aria-label="معرض ميني بازار الرئيسي"
     >
-      {/* Full-width Animated, Pulsating & Drifting Background Canvas */}
+      {/* Full-width Animated Background Canvas */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
         {/* Base background color/gradient */}
         <div
@@ -128,35 +137,51 @@ export const HeroSeamlessCarousel: React.FC = () => {
           }}
         />
 
-        {/* Full-width Pulsating Image Backdrop with horizontal drift */}
-        {(slide.background_image || slide.desktop_image) && (
+        {/* Full-width Image Background */}
+        {fullBgImage && (
           <motion.div
             key={`hero-bg-${slide.id}`}
             initial={{ opacity: 0 }}
             animate={{
-              opacity: 0.18,
-              x: isPulsingActive ? [-24, 24, -24] : 0,
-              scale: isPulsingActive ? [1.02, 1.07, 1.02] : 1.02,
+              opacity: 1,
+              x: isPulsingActive ? [-15, 15, -15] : 0,
+              scale: isPulsingActive ? [1.02, 1.05, 1.02] : 1,
             }}
             transition={{
-              opacity: { duration: 0.8 },
-              x: { duration: 16, repeat: Infinity, ease: 'easeInOut' },
-              scale: { duration: 12, repeat: Infinity, ease: 'easeInOut' },
+              opacity: { duration: 0.6 },
+              x: { duration: 20, repeat: Infinity, ease: 'easeInOut' },
+              scale: { duration: 16, repeat: Infinity, ease: 'easeInOut' },
             }}
-            className="absolute -inset-8 w-[calc(100%+64px)] h-[calc(100%+64px)]"
+            className="absolute inset-0 w-full h-full"
           >
             <img
-              src={slide.background_image || slide.desktop_image}
+              src={fullBgImage}
               alt=""
-              className="w-full h-full object-cover filter blur-[8px] transform"
+              className={`w-full h-full object-cover transform ${
+                slide.background_blur ? 'filter blur-[8px]' : ''
+              }`}
             />
-            {/* Subtle multi-layer luxury overlay to ensure pristine foreground readability */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#FBF8F3]/95 via-[#FBF8F3]/85 to-[#FBF8F3]/95" />
+
+            {/* Smart Overlay for High Contrast and Pristine Readability */}
+            <div
+              className="absolute inset-0 transition-opacity duration-500"
+              style={{
+                backgroundColor: '#2F2B28',
+                opacity: overlayPercent / 100,
+              }}
+            />
+
+            {/* Gradient Scrim for Split or Full backgrounds */}
+            {isFullBackground ? (
+              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-r from-[#FBF8F3]/90 via-[#FBF8F3]/60 to-[#FBF8F3]/90" />
+            )}
           </motion.div>
         )}
 
-        {/* Ambient Pulsating Golden & Warm Light Glow Orbs moving left and right */}
-        {isPulsingActive && (
+        {/* Ambient Pulsating Golden Glow Orbs */}
+        {isPulsingActive && !isFullBackground && (
           <>
             <motion.div
               animate={{
@@ -191,7 +216,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
       </div>
 
       {/* Main Slides Carousel Container with Touch & Drag Support */}
-      <div className="relative min-h-[500px] sm:min-h-[560px] lg:min-h-[620px] w-full flex items-center z-10">
+      <div className="relative min-h-[480px] sm:min-h-[540px] lg:min-h-[600px] w-full flex items-center z-10">
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={slide.id}
@@ -212,95 +237,177 @@ export const HeroSeamlessCarousel: React.FC = () => {
             }}
             className="absolute inset-0 w-full h-full flex items-center justify-center px-4 sm:px-12 lg:px-20 cursor-grab active:cursor-grabbing"
           >
-            <div className="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-10">
-              {/* Text Side (RTL Right side) */}
-              <div className="lg:col-span-6 flex flex-col items-start text-right z-10">
-                {/* Badge */}
-                {slide.badge_ar && (
-                  <div
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold mb-4 shadow-2xs transition-colors"
-                    style={{
-                      backgroundColor: slide.badge_bg || '#F4ECE2',
-                      color: slide.badge_color || '#8A7465',
-                      borderColor: '#D9C1A7',
-                      borderWidth: '1px',
-                    }}
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
-                    <span>{slide.badge_ar}</span>
-                  </div>
-                )}
-
-                {/* Main Heading */}
-                <h1
-                  className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.25] font-heading mb-4 transition-colors"
-                  style={{
-                    color: slide.title_color || '#2F2B28',
-                  }}
+            <div className="max-w-7xl w-full mx-auto py-10">
+              {/* Full Background Mode Layout */}
+              {isFullBackground ? (
+                <div
+                  className={`max-w-2xl text-right z-10 ${
+                    slide.text_alignment === 'center'
+                      ? 'mx-auto text-center'
+                      : 'ml-auto'
+                  }`}
                 >
-                  {slide.title_ar}
-                </h1>
-
-                {/* Subtitle / Description */}
-                <p
-                  className="text-base sm:text-lg leading-relaxed max-w-xl mb-8 transition-colors"
-                  style={{
-                    color: slide.description_color || '#5F5751',
-                  }}
-                >
-                  {slide.description_ar}
-                </p>
-
-                {/* Call to Actions */}
-                <div className="flex flex-wrap items-center gap-3.5">
-                  <button
-                    onClick={() => handleCtaClick(slide.primary_button_url)}
-                    style={{
-                      backgroundColor: slide.button_bg || '#2F2B28',
-                      color: slide.button_text_color || '#F5E9D8',
-                    }}
-                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-[14px] font-bold text-sm shadow-md transition-all active:scale-95 border border-[#4A3E37] group hover:brightness-110"
-                  >
-                    <span>{slide.primary_button_text}</span>
-                    <ArrowUpRight className="w-4 h-4 text-[#C6A36A] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  </button>
-
-                  {slide.secondary_button_text && (
-                    <button
-                      onClick={() => handleCtaClick(slide.secondary_button_url || '#')}
+                  {/* Badge */}
+                  {slide.badge_ar && (
+                    <div
+                      className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4 shadow-md backdrop-blur-md"
                       style={{
-                        backgroundColor: slide.secondary_button_bg || '#F4ECE2',
-                        color: slide.secondary_button_text_color || '#6F584A',
+                        backgroundColor: slide.badge_bg || '#2F2B28',
+                        color: slide.badge_color || '#C6A36A',
+                        borderColor: '#C6A36A',
+                        borderWidth: '1px',
                       }}
-                      className="inline-flex items-center gap-2 px-5 py-3.5 rounded-[14px] font-semibold text-sm border border-[#D9C1A7] transition-all active:scale-95 hover:brightness-95"
                     >
-                      <span>{slide.secondary_button_text}</span>
-                    </button>
+                      <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>{slide.badge_ar}</span>
+                    </div>
                   )}
-                </div>
-              </div>
 
-              {/* Visual Showcase Side (Left side in RTL) */}
-              <div className="lg:col-span-6 relative flex justify-center items-center">
-                <div className="relative w-full max-w-[480px] aspect-4/3 sm:aspect-1/1 rounded-[28px] overflow-hidden shadow-2xl border-4 border-white">
-                  <img
-                    src={slide.desktop_image}
-                    alt={slide.title_ar}
-                    className="w-full h-full object-cover transform scale-105 hover:scale-100 transition-transform duration-700"
-                    loading="eager"
-                  />
-                  {/* Subtle luxury gradient vignette */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+                  {/* Main Heading */}
+                  <h1
+                    className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.2] font-heading mb-4 drop-shadow-md"
+                    style={{
+                      color: slide.title_color || '#FFFFFF',
+                    }}
+                  >
+                    {slide.title_ar}
+                  </h1>
 
-                  {/* Micro floating luxury seal */}
-                  <div className="absolute bottom-5 right-5 bg-white/95 backdrop-blur-md rounded-[16px] px-3.5 py-2 border border-[#E7D4BC] shadow-md flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#C6A36A] animate-pulse" />
-                    <span className="text-xs font-bold text-[#6F584A]">
-                      مختارات حصرية أصلية 100%
-                    </span>
+                  {/* Subtitle / Description */}
+                  <p
+                    className="text-base sm:text-xl leading-relaxed mb-8 max-w-xl drop-shadow-sm font-medium"
+                    style={{
+                      color: slide.description_color || '#F5E9D8',
+                    }}
+                  >
+                    {slide.description_ar}
+                  </p>
+
+                  {/* Call to Actions */}
+                  <div
+                    className={`flex flex-wrap items-center gap-3.5 ${
+                      slide.text_alignment === 'center' ? 'justify-center' : ''
+                    }`}
+                  >
+                    <button
+                      onClick={() => handleCtaClick(slide.primary_button_url)}
+                      style={{
+                        backgroundColor: slide.button_bg || '#C6A36A',
+                        color: slide.button_text_color || '#2F2B28',
+                      }}
+                      className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-[14px] font-bold text-sm shadow-xl transition-all active:scale-95 border border-[#C6A36A] group hover:brightness-110"
+                    >
+                      <span>{slide.primary_button_text}</span>
+                      <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </button>
+
+                    {slide.secondary_button_text && (
+                      <button
+                        onClick={() => handleCtaClick(slide.secondary_button_url || '#')}
+                        style={{
+                          backgroundColor: slide.secondary_button_bg || 'rgba(255,255,255,0.15)',
+                          color: slide.secondary_button_text_color || '#FFFFFF',
+                        }}
+                        className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[14px] font-semibold text-sm border border-white/40 backdrop-blur-md transition-all active:scale-95 hover:bg-white/25"
+                      >
+                        <span>{slide.secondary_button_text}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
+              ) : (
+                /* Split Layout Mode (Text + Visual Card) */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                  {/* Text Side (RTL Right side) */}
+                  <div className="lg:col-span-6 flex flex-col items-start text-right z-10">
+                    {/* Badge */}
+                    {slide.badge_ar && (
+                      <div
+                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold mb-4 shadow-2xs transition-colors"
+                        style={{
+                          backgroundColor: slide.badge_bg || '#F4ECE2',
+                          color: slide.badge_color || '#8A7465',
+                          borderColor: '#D9C1A7',
+                          borderWidth: '1px',
+                        }}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
+                        <span>{slide.badge_ar}</span>
+                      </div>
+                    )}
+
+                    {/* Main Heading */}
+                    <h1
+                      className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.25] font-heading mb-4 transition-colors"
+                      style={{
+                        color: slide.title_color || '#2F2B28',
+                      }}
+                    >
+                      {slide.title_ar}
+                    </h1>
+
+                    {/* Subtitle / Description */}
+                    <p
+                      className="text-base sm:text-lg leading-relaxed max-w-xl mb-8 transition-colors"
+                      style={{
+                        color: slide.description_color || '#5F5751',
+                      }}
+                    >
+                      {slide.description_ar}
+                    </p>
+
+                    {/* Call to Actions */}
+                    <div className="flex flex-wrap items-center gap-3.5">
+                      <button
+                        onClick={() => handleCtaClick(slide.primary_button_url)}
+                        style={{
+                          backgroundColor: slide.button_bg || '#2F2B28',
+                          color: slide.button_text_color || '#F5E9D8',
+                        }}
+                        className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-[14px] font-bold text-sm shadow-md transition-all active:scale-95 border border-[#4A3E37] group hover:brightness-110"
+                      >
+                        <span>{slide.primary_button_text}</span>
+                        <ArrowUpRight className="w-4 h-4 text-[#C6A36A] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </button>
+
+                      {slide.secondary_button_text && (
+                        <button
+                          onClick={() => handleCtaClick(slide.secondary_button_url || '#')}
+                          style={{
+                            backgroundColor: slide.secondary_button_bg || '#F4ECE2',
+                            color: slide.secondary_button_text_color || '#6F584A',
+                          }}
+                          className="inline-flex items-center gap-2 px-5 py-3.5 rounded-[14px] font-semibold text-sm border border-[#D9C1A7] transition-all active:scale-95 hover:brightness-95"
+                        >
+                          <span>{slide.secondary_button_text}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Visual Showcase Side (Left side in RTL) */}
+                  <div className="lg:col-span-6 relative flex justify-center items-center">
+                    <div className="relative w-full max-w-[480px] aspect-4/3 sm:aspect-1/1 rounded-[28px] overflow-hidden shadow-2xl border-4 border-white">
+                      <img
+                        src={slide.desktop_image}
+                        alt={slide.title_ar}
+                        className="w-full h-full object-cover transform scale-105 hover:scale-100 transition-transform duration-700"
+                        loading="eager"
+                      />
+                      {/* Subtle luxury gradient vignette */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+
+                      {/* Micro floating luxury seal */}
+                      <div className="absolute bottom-5 right-5 bg-white/95 backdrop-blur-md rounded-[16px] px-3.5 py-2 border border-[#E7D4BC] shadow-md flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#C6A36A] animate-pulse" />
+                        <span className="text-xs font-bold text-[#6F584A]">
+                          مختارات حصرية أصلية 100%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

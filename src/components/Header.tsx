@@ -34,6 +34,7 @@ export const Header: React.FC = () => {
     setSelectedCategory,
     selectedCategory,
     storeSettings,
+    isAdminAuthenticated,
   } = useStore();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -98,9 +99,18 @@ export const Header: React.FC = () => {
     .filter((s) => s.is_active !== false && s.url)
     .sort((a, b) => a.sort_order - b.sort_order);
 
-  const announcementText =
-    storeSettings.announcement_bar_text_ar ||
-    'شحن مجاني لكافة الطلبات التي تتجاوز 450 ر.س • تغليف هدايا ملكي مجاناً • ضمان الجودة والأصالة الذهبي';
+  const announcementPhrases =
+    storeSettings.announcement_phrases && storeSettings.announcement_phrases.length > 0
+      ? storeSettings.announcement_phrases
+      : (storeSettings.announcement_bar_text_ar
+          ? [storeSettings.announcement_bar_text_ar, 'تغليف هدايا ملكي مجاني مع كل طلبية', 'ضمان الجودة والأصالة 100%']
+          : [
+              'شحن مجاني لكافة الطلبات التي تتجاوز 450 ر.س',
+              'تغليف هدايا ملكي مجاني مع كل طلبية',
+              'ضمان الجودة والأصالة 100%',
+              'خدمة توصيل سريعة وموثوقة لباب منزلك',
+              'خدمة عملاء راقية واستشارات ذوقية متواصلة',
+            ]);
 
   return (
     <header className="sticky top-0 z-40 w-full transition-all duration-300 font-sans">
@@ -115,27 +125,27 @@ export const Header: React.FC = () => {
             {/* Animated Ticker Content - Loop repeated twice for seamless infinite scrolling */}
             <div className="animate-marquee flex items-center shrink-0">
               <div className="flex items-center gap-6 px-4">
-                <span className="flex items-center gap-1.5 text-[#C6A36A]">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span className="text-[#F5E9D8]">{announcementText}</span>
-                </span>
-                <span className="text-[#C6A36A]/60">✦</span>
-                <span className="text-[#E7D4BC] hidden sm:inline">خدمة توصيل فورية لباب منزلك</span>
-                <span className="text-[#C6A36A]/60 hidden sm:inline">✦</span>
-                <span className="text-[#E7D4BC]">خدمة عملاء راقية على مدار الساعة</span>
-                <span className="text-[#C6A36A]/60">✦</span>
+                {announcementPhrases.map((phrase, idx) => (
+                  <React.Fragment key={`p1-${idx}`}>
+                    <span className="flex items-center gap-1.5 text-[#F5E9D8]">
+                      <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>{phrase}</span>
+                    </span>
+                    <span className="text-[#C6A36A]/60">✦</span>
+                  </React.Fragment>
+                ))}
               </div>
 
               <div className="flex items-center gap-6 px-4">
-                <span className="flex items-center gap-1.5 text-[#C6A36A]">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span className="text-[#F5E9D8]">{announcementText}</span>
-                </span>
-                <span className="text-[#C6A36A]/60">✦</span>
-                <span className="text-[#E7D4BC] hidden sm:inline">خدمة توصيل فورية لباب منزلك</span>
-                <span className="text-[#C6A36A]/60 hidden sm:inline">✦</span>
-                <span className="text-[#E7D4BC]">خدمة عملاء راقية على مدار الساعة</span>
-                <span className="text-[#C6A36A]/60">✦</span>
+                {announcementPhrases.map((phrase, idx) => (
+                  <React.Fragment key={`p2-${idx}`}>
+                    <span className="flex items-center gap-1.5 text-[#F5E9D8]">
+                      <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>{phrase}</span>
+                    </span>
+                    <span className="text-[#C6A36A]/60">✦</span>
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           </div>
@@ -289,7 +299,12 @@ export const Header: React.FC = () => {
               }`}
               title="لوحة الإدارة والتخصيص"
             >
-              <ShieldCheck className="w-4 h-4 text-[#C6A36A]" />
+              <div className="relative">
+                <ShieldCheck className="w-4 h-4 text-[#C6A36A]" />
+                {isAdminAuthenticated && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                )}
+              </div>
               <span>
                 {activeView === 'admin' ? 'العودة للمتجر' : 'لوحة الإدارة'}
               </span>

@@ -23,16 +23,28 @@ import {
   Check,
   Layers,
   X,
+  ShieldCheck,
+  LogOut,
+  User,
+  KeyRound,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Order, OrderStatus, Product, HeroSlide } from '../types';
 import { CategoryManager } from './admin/CategoryManager';
 import { ProductModal } from './admin/ProductModal';
 import { LogoCustomizer } from './admin/LogoCustomizer';
+import { AnnouncementSettingsManager } from './admin/AnnouncementSettingsManager';
+import { FooterSettingsManager } from './admin/FooterSettingsManager';
+import { HeroSlideModal } from './admin/HeroSlideModal';
 import { ImageUploader } from './ImageUploader';
+import { AdminLoginView } from './admin/AdminLoginView';
+import { AdminSecuritySettings } from './admin/AdminSecuritySettings';
 
 export const AdminDashboard: React.FC = () => {
   const {
+    isAdminAuthenticated,
+    adminCredentials,
+    logoutAdmin,
     orders,
     products,
     categories,
@@ -52,7 +64,7 @@ export const AdminDashboard: React.FC = () => {
     setActiveView,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'categories' | 'customize'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'categories' | 'customize' | 'security'>('overview');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
   const [statusChangeNote, setStatusChangeNote] = useState('');
@@ -130,23 +142,6 @@ export const AdminDashboard: React.FC = () => {
     triggerToast();
   };
 
-  const handleSaveSlideForm = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSlide) return;
-    const existingIndex = heroSlides.findIndex((s) => s.id === editingSlide.id);
-    let updated: HeroSlide[];
-    if (existingIndex > -1) {
-      updated = [...heroSlides];
-      updated[existingIndex] = editingSlide;
-    } else {
-      updated = [...heroSlides, editingSlide];
-    }
-    updateHeroSlides(updated);
-    setIsSlideModalOpen(false);
-    setEditingSlide(null);
-    triggerToast();
-  };
-
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
       case 'new':
@@ -171,6 +166,11 @@ export const AdminDashboard: React.FC = () => {
     return o.status === orderStatusFilter;
   });
 
+  // Guard: if not authenticated, show the secure login & password recovery view
+  if (!isAdminAuthenticated) {
+    return <AdminLoginView />;
+  }
+
   return (
     <div className="py-8 px-4 sm:px-8 max-w-7xl mx-auto text-right">
       {/* Save Notification Toast */}
@@ -193,29 +193,47 @@ export const AdminDashboard: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center flex-wrap gap-2.5">
           {hasUnpublishedChanges && (
             <span className="text-xs font-semibold text-[#B68A45] bg-[#FFF8EE] px-3 py-1.5 rounded-full border border-[#B68A45]/30">
               يوجد مسودات غير منشورة
             </span>
           )}
 
+          {/* Logged in admin pill */}
+          <div className="px-3 py-2 rounded-[12px] bg-[#FBF8F3] border border-[#D9C1A7] text-xs font-semibold text-[#2F2B28] flex items-center gap-1.5 shadow-2xs">
+            <User className="w-3.5 h-3.5 text-[#8A7465]" />
+            <span>المشرف: <strong className="text-[#6F584A] font-mono">{adminCredentials.username}</strong></span>
+          </div>
+
           <button
             onClick={() => {
               publishCustomization();
               triggerToast();
             }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] bg-[#2F2B28] hover:bg-[#231F1D] text-[#F5E9D8] text-xs font-bold shadow-xs transition-all active:scale-95 border border-[#4A3E37]"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[14px] bg-[#2F2B28] hover:bg-[#231F1D] text-[#F5E9D8] text-xs font-bold shadow-xs transition-all active:scale-95 border border-[#4A3E37]"
           >
             <Save className="w-4 h-4 text-[#C6A36A]" />
-            <span>نشر التغييرات على المتجر</span>
+            <span>نشر التغييرات</span>
           </button>
 
           <button
             onClick={() => setActiveView('store')}
-            className="px-4 py-2.5 rounded-[14px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#2F2B28] text-xs font-semibold"
+            className="px-3.5 py-2.5 rounded-[14px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#2F2B28] text-xs font-semibold"
           >
             معاينة المتجر
+          </button>
+
+          {/* Secure Logout Button */}
+          <button
+            onClick={() => {
+              logoutAdmin();
+            }}
+            title="تسجيل الخروج من لوحة التحكم"
+            className="px-3.5 py-2.5 rounded-[14px] bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 shadow-2xs"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">تسجيل الخروج</span>
           </button>
         </div>
       </div>
@@ -285,6 +303,19 @@ export const AdminDashboard: React.FC = () => {
         >
           <Sliders className="w-4 h-4" />
           <span>تخصيص الهوية والواجهة</span>
+        </button>
+
+        {/* 6. Security & Admin Account Tab */}
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'security'
+              ? 'bg-[#2F2B28] text-white shadow-2xs'
+              : 'bg-[#F4ECE2] text-[#5F5751] hover:bg-[#E7D4BC]'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-[#C6A36A]" />
+          <span>الأمان والحساب وكلمة المرور</span>
         </button>
       </div>
 
@@ -795,13 +826,16 @@ export const AdminDashboard: React.FC = () => {
           {/* Custom Logo Uploader & Emblem Settings */}
           <LogoCustomizer />
 
-          {/* Store Info & WhatsApp Settings */}
+          {/* Announcement Bar Manager */}
+          <AnnouncementSettingsManager onSuccess={triggerToast} />
+
+          {/* Store Info & Direct Contact */}
           <div className="bg-white p-6 rounded-[24px] border border-[#E5D8C9] shadow-2xs">
             <h3 className="text-base font-bold text-[#6F584A] font-heading mb-4">
-              بيانات الهوية والتواصل المباشر
+              بيانات المتجر الأساسية ورقم الواتساب
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
                 <label className="block font-semibold text-[#5F5751] mb-1">اسم المتجر (بالعربية)</label>
                 <input
@@ -831,29 +865,6 @@ export const AdminDashboard: React.FC = () => {
                   className="w-full p-2.5 bg-[#FBF8F3] border border-[#D9C1A7] rounded-[10px]"
                   dir="ltr"
                 />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-[#5F5751] mb-1">نص شريط الإعلان العلوي</label>
-                <input
-                  type="text"
-                  value={storeSettings.announcement_bar_text_ar}
-                  onChange={(e) => updateStoreSettings({ announcement_bar_text_ar: e.target.value })}
-                  className="w-full p-2.5 bg-[#FBF8F3] border border-[#D9C1A7] rounded-[10px]"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 pt-5">
-                <input
-                  type="checkbox"
-                  id="announcementVisible"
-                  checked={storeSettings.announcement_bar_visible}
-                  onChange={(e) => updateStoreSettings({ announcement_bar_visible: e.target.checked })}
-                  className="w-4 h-4 accent-[#6F584A]"
-                />
-                <label htmlFor="announcementVisible" className="font-semibold text-[#2F2B28]">
-                  إظهار شريط الإعلان الفاخر
-                </label>
               </div>
             </div>
           </div>
@@ -1015,6 +1026,12 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Footer Settings & Social Media Manager */}
+          <FooterSettingsManager onSuccess={triggerToast} />
+
+          {/* Admin Security & Account Credentials Manager */}
+          <AdminSecuritySettings onSuccess={triggerToast} />
+
           {/* Publishing & Restore Defaults Actions */}
           <div className="flex items-center justify-between p-6 rounded-[20px] bg-[#F7F1E8] border border-[#E7D4BC]">
             <button
@@ -1041,6 +1058,13 @@ export const AdminDashboard: React.FC = () => {
               <span>نشر المسودة المعتمدة للواجهة</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* 6. DEDICATED SECURITY & ADMIN ACCOUNT TAB */}
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          <AdminSecuritySettings onSuccess={triggerToast} />
         </div>
       )}
 
@@ -1170,336 +1194,27 @@ export const AdminDashboard: React.FC = () => {
 
       {/* MODAL: EDIT HERO SLIDE */}
       {isSlideModalOpen && editingSlide && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] max-w-2xl w-full p-6 text-right border border-[#E5D8C9] shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5D8C9]">
-              <div>
-                <h3 className="text-base font-bold text-[#2F2B28] font-heading">
-                  إعدادات وتخصيص شريحة الهيرو
-                </h3>
-                <p className="text-[11px] text-[#7C736D]">
-                  التحكم الكامل بالنصوص والألوان، صور العرض والخلفية، وتأثيرات الحركة النابضة
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSlideModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#6F584A] flex items-center justify-center transition-transform active:scale-95"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSlideForm} className="space-y-4 text-xs">
-              {/* قسم النصوص والألوان */}
-              <div className="p-4 rounded-[16px] bg-[#FBF8F3] border border-[#E7D4BC] space-y-3">
-                <h4 className="font-bold text-[#2F2B28] text-xs flex items-center gap-1.5 mb-2">
-                  <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
-                  <span>تعديل النصوص وألوانها</span>
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block font-semibold mb-1">العنوان الرئيسي للشريحة</label>
-                    <input
-                      type="text"
-                      required
-                      value={editingSlide.title_ar}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, title_ar: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">لون العنوان</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editingSlide.title_color || '#2F2B28'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, title_color: e.target.value })}
-                        className="w-9 h-9 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.title_color || '#2F2B28'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, title_color: e.target.value })}
-                        className="w-full p-2 bg-white border border-[#D9C1A7] rounded-[8px] text-[11px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block font-semibold mb-1">وصف الشريحة</label>
-                    <textarea
-                      rows={2}
-                      value={editingSlide.description_ar}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, description_ar: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">لون الوصف</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editingSlide.description_color || '#5F5751'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, description_color: e.target.value })}
-                        className="w-9 h-9 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.description_color || '#5F5751'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, description_color: e.target.value })}
-                        className="w-full p-2 bg-white border border-[#D9C1A7] rounded-[8px] text-[11px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-semibold mb-1">شارة الشريحة (Badge)</label>
-                    <input
-                      type="text"
-                      value={editingSlide.badge_ar || ''}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, badge_ar: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                      placeholder="مثال: مختارات حصرية"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">لون نص الشارة</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editingSlide.badge_color || '#8A7465'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, badge_color: e.target.value })}
-                        className="w-9 h-9 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.badge_color || '#8A7465'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, badge_color: e.target.value })}
-                        className="w-full p-2 bg-white border border-[#D9C1A7] rounded-[8px] text-[11px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">خلفية الشارة</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editingSlide.badge_bg || '#F4ECE2'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, badge_bg: e.target.value })}
-                        className="w-9 h-9 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.badge_bg || '#F4ECE2'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, badge_bg: e.target.value })}
-                        className="w-full p-2 bg-white border border-[#D9C1A7] rounded-[8px] text-[11px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* قسم أزرار الدعوة للإجراء (CTA Buttons) */}
-              <div className="p-4 rounded-[16px] bg-[#FBF8F3] border border-[#E7D4BC] space-y-3">
-                <h4 className="font-bold text-[#2F2B28] text-xs mb-2">أزرار الشريحة (CTA)</h4>
-                
-                {/* الزر الأساسي */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block font-semibold mb-1">نص الزر الأساسي</label>
-                    <input
-                      type="text"
-                      value={editingSlide.primary_button_text}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, primary_button_text: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">رابط الزر</label>
-                    <input
-                      type="text"
-                      value={editingSlide.primary_button_url}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, primary_button_url: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">خلفية الزر</label>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={editingSlide.button_bg || '#2F2B28'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, button_bg: e.target.value })}
-                        className="w-8 h-8 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.button_bg || '#2F2B28'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, button_bg: e.target.value })}
-                        className="w-full p-1.5 bg-white border border-[#D9C1A7] rounded-[8px] text-[10px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">لون نص الزر</label>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={editingSlide.button_text_color || '#F5E9D8'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, button_text_color: e.target.value })}
-                        className="w-8 h-8 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.button_text_color || '#F5E9D8'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, button_text_color: e.target.value })}
-                        className="w-full p-1.5 bg-white border border-[#D9C1A7] rounded-[8px] text-[10px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* الزر الثانوي */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-[#E5D8C9]">
-                  <div>
-                    <label className="block font-semibold mb-1">نص الزر الثانوي (اختياري)</label>
-                    <input
-                      type="text"
-                      value={editingSlide.secondary_button_text || ''}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, secondary_button_text: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">رابط الزر الثانوي</label>
-                    <input
-                      type="text"
-                      value={editingSlide.secondary_button_url || ''}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, secondary_button_url: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">خلفية الثانوي</label>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={editingSlide.secondary_button_bg || '#F4ECE2'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, secondary_button_bg: e.target.value })}
-                        className="w-8 h-8 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.secondary_button_bg || '#F4ECE2'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, secondary_button_bg: e.target.value })}
-                        className="w-full p-1.5 bg-white border border-[#D9C1A7] rounded-[8px] text-[10px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">لون نص الثانوي</label>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={editingSlide.secondary_button_text_color || '#6F584A'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, secondary_button_text_color: e.target.value })}
-                        className="w-8 h-8 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.secondary_button_text_color || '#6F584A'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, secondary_button_text_color: e.target.value })}
-                        className="w-full p-1.5 bg-white border border-[#D9C1A7] rounded-[8px] text-[10px] font-mono text-left"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* قسم الصور والخلفية والحركة النابضة */}
-              <div className="p-4 rounded-[16px] bg-[#FBF8F3] border border-[#E7D4BC] space-y-4">
-                <h4 className="font-bold text-[#2F2B28] text-xs mb-2">التحكم بالصور وخلفية الهيرو</h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <ImageUploader
-                      value={editingSlide.desktop_image}
-                      onChange={(url) => setEditingSlide({ ...editingSlide, desktop_image: url, mobile_image: url })}
-                      label="صورة البنر الرئيسية للمنتج / العرض"
-                      aspectRatioHint="أبعاد مربعة 1:1 أو 4:3"
-                      maxDimension={1600}
-                    />
-                  </div>
-                  <div>
-                    <ImageUploader
-                      value={editingSlide.background_image || ''}
-                      onChange={(url) => setEditingSlide({ ...editingSlide, background_image: url })}
-                      label="صورة الخلفية العريضة المتحركة (اختيارية)"
-                      aspectRatioHint="أبعاد بانورامية 16:9 للخلفية النابضة"
-                      maxDimension={1920}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#E5D8C9]">
-                  <div>
-                    <label className="block font-semibold mb-1">لون أو تدرج الخلفية</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editingSlide.background_value?.startsWith('#') ? editingSlide.background_value : '#FBF8F3'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, background_value: e.target.value })}
-                        className="w-9 h-9 p-0.5 rounded-[8px] border border-[#D9C1A7] cursor-pointer bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={editingSlide.background_value || '#FBF8F3'}
-                        onChange={(e) => setEditingSlide({ ...editingSlide, background_value: e.target.value })}
-                        className="w-full p-2 bg-white border border-[#D9C1A7] rounded-[8px] text-[11px] font-mono text-left"
-                        placeholder="#FBF8F3"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 pt-6">
-                    <input
-                      type="checkbox"
-                      id="slidePulseAnimation"
-                      checked={editingSlide.pulse_animation !== false}
-                      onChange={(e) => setEditingSlide({ ...editingSlide, pulse_animation: e.target.checked })}
-                      className="w-4 h-4 accent-[#2F2B28]"
-                    />
-                    <label htmlFor="slidePulseAnimation" className="font-semibold text-[#2F2B28] cursor-pointer">
-                      تفعيل الحركة النابضة والإزاحة الأفقية لهذه الشريحة
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5D8C9]">
-                <button
-                  type="button"
-                  onClick={() => setIsSlideModalOpen(false)}
-                  className="px-4 py-2 text-[#7C736D]"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-[#2F2B28] hover:bg-[#231F1D] text-white font-bold rounded-[12px] border border-[#4A3E37] shadow-sm transition-all"
-                >
-                  حفظ الشريحة واعتماد التعديلات
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <HeroSlideModal
+          slide={editingSlide}
+          onSave={(updatedSlide) => {
+            const existingIndex = heroSlides.findIndex((s) => s.id === updatedSlide.id);
+            let updated: HeroSlide[];
+            if (existingIndex > -1) {
+              updated = [...heroSlides];
+              updated[existingIndex] = updatedSlide;
+            } else {
+              updated = [...heroSlides, updatedSlide];
+            }
+            updateHeroSlides(updated);
+            setIsSlideModalOpen(false);
+            setEditingSlide(null);
+            triggerToast();
+          }}
+          onClose={() => {
+            setIsSlideModalOpen(false);
+            setEditingSlide(null);
+          }}
+        />
       )}
     </div>
   );

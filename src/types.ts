@@ -188,9 +188,12 @@ export interface HeroSlide {
   secondary_button_text?: string;
   secondary_button_url?: string;
   text_alignment: 'right' | 'center' | 'left';
+  layout_type?: 'split' | 'full_background' | 'centered';
   background_type: 'color' | 'image' | 'gradient';
   background_value: string;
   background_image?: string;
+  background_blur?: boolean;
+  overlay_opacity?: number; // 0 to 90
   title_color?: string;
   description_color?: string;
   badge_color?: string;
@@ -212,6 +215,7 @@ export interface StoreSettings {
   announcement_bar_text_ar: string;
   announcement_bar_text_en: string;
   announcement_bar_visible: boolean;
+  announcement_phrases?: string[];
   phone_number: string;
   whatsapp_number: string;
   support_email: string;
@@ -237,13 +241,14 @@ export interface StoreSettings {
   // Navigation Menu Items
   navigation_items?: NavigationItem[];
 
-  // Footer Settings
+  // Footer Settings & Commitments
   footer_bio_ar?: string;
   footer_verification_text_ar?: string;
   footer_copyright_ar?: string;
   footer_designer_credit_ar?: string;
   footer_show_designer_credit?: boolean;
   footer_columns?: FooterColumn[];
+  footer_commitments?: { id: string; text_ar: string }[];
   footer_payment_methods?: string[];
 }
 
@@ -322,4 +327,21 @@ export interface PageSection {
   title_ar: string;
   is_visible: boolean;
   sort_order: number;
+}
+
+export interface AdminCredentials {
+  username: string;
+  password_hash: string;
+  password_salt: string;
+  security_question: string;
+  security_answer_hash: string;
+  security_answer_salt: string;
+  recovery_email: string;
+  recovery_pin_hash: string;
+  recovery_pin_salt: string;
+  last_updated?: string;
+  // Deprecated plain-text fields for backward-compatibility / seamless migration
+  password?: string;
+  security_answer?: string;
+  recovery_pin?: string;
 }

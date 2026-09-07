@@ -41,6 +41,15 @@ export const Footer: React.FC = () => {
 
   const showDesignerCredit = storeSettings.footer_show_designer_credit !== false;
 
+  const commitments =
+    storeSettings.footer_commitments && storeSettings.footer_commitments.length > 0
+      ? storeSettings.footer_commitments
+      : [
+          { id: 'c-1', text_ar: 'فحص جودة يدوي دقيق لكل قطعة قبل الإرسال.' },
+          { id: 'c-2', text_ar: 'بوكس الإهداء الفاخر وشريط الساتان مجاناً.' },
+          { id: 'c-3', text_ar: 'دفع آمن مع التحويل البنكي المعتمد.' },
+        ];
+
   const paymentMethods =
     storeSettings.footer_payment_methods && storeSettings.footer_payment_methods.length > 0
       ? storeSettings.footer_payment_methods
@@ -243,18 +252,12 @@ export const Footer: React.FC = () => {
               تعهدات ميني بازار
             </h3>
             <div className="space-y-2.5 text-xs text-[#C4B7AC]">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#C6A36A] shrink-0 mt-0.5" />
-                <span className="leading-relaxed">فحص جودة يدوي دقيق لكل قطعة قبل الإرسال.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#C6A36A] shrink-0 mt-0.5" />
-                <span className="leading-relaxed">بوكس الإهداء الفاخر وشريط الساتان مجاناً.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#C6A36A] shrink-0 mt-0.5" />
-                <span className="leading-relaxed">دفع آمن مع التحويل البنكي المعتمد.</span>
-              </div>
+              {commitments.map((com) => (
+                <div key={com.id} className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#C6A36A] shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{com.text_ar}</span>
+                </div>
+              ))}
             </div>
           </div>
 
