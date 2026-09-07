@@ -1,0 +1,66 @@
+import React from 'react';
+import { StoreProvider, useStore } from './context/StoreContext';
+import { Header } from './components/Header';
+import { HeroSeamlessCarousel } from './components/HeroSeamlessCarousel';
+import { TrustBadges } from './components/TrustBadges';
+import { CategoryBar } from './components/CategoryBar';
+import { ProductGrid } from './components/ProductGrid';
+import { ProductDetailModal } from './components/ProductDetailModal';
+import { CartDrawer } from './components/CartDrawer';
+import { CheckoutView } from './components/CheckoutView';
+import { OrderSuccessView } from './components/OrderSuccessView';
+import { WishlistView } from './components/WishlistView';
+import { AdminDashboard } from './components/AdminDashboard';
+import { Footer } from './components/Footer';
+import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+import { BottomNav } from './components/BottomNav';
+
+const MainLayout: React.FC = () => {
+  const { activeView } = useStore();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FBF8F3] text-[#2F2B28] antialiased selection:bg-[#E7D4BC] selection:text-[#6F584A]">
+      {/* Global Header with Single-Line Seamless Infinite Marquee & Burger Drawer */}
+      <Header />
+
+      {/* Main View Router */}
+      <main className="flex-1">
+        {activeView === 'store' && (
+          <>
+            <HeroSeamlessCarousel />
+            <TrustBadges />
+            <CategoryBar />
+            <ProductGrid />
+          </>
+        )}
+
+        {activeView === 'wishlist' && <WishlistView />}
+
+        {activeView === 'checkout' && <CheckoutView />}
+
+        {activeView === 'order_success' && <OrderSuccessView />}
+
+        {activeView === 'admin' && <AdminDashboard />}
+      </main>
+
+      {/* Global Footer (Redesigned with Contact details, Links, Commitments, & Mobile-safe padding) */}
+      <Footer />
+
+      {/* Mobile Fixed Bottom Navigation Bar */}
+      <BottomNav />
+
+      {/* Global Drawers, Modals & Floating WhatsApp */}
+      <CartDrawer />
+      <ProductDetailModal />
+      <FloatingWhatsApp />
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <StoreProvider>
+      <MainLayout />
+    </StoreProvider>
+  );
+}
