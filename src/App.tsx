@@ -1,4 +1,5 @@
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/Header';
@@ -70,6 +71,7 @@ export default function App() {
       <StoreProvider>
         <MainLayout />
       </StoreProvider>
+      <Analytics />
     </ErrorBoundary>
   );
 }
