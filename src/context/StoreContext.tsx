@@ -32,6 +32,23 @@ import {
   generateRandomSalt,
 } from '../utils/security';
 import { safeStorage } from '../utils/safeStorage';
+import {
+  listenToProducts,
+  listenToCategories,
+  listenToBrands,
+  listenToOrders,
+  listenToStoreSettings,
+  saveProductToCloud,
+  deleteProductFromCloud,
+  saveCategoryToCloud,
+  deleteCategoryFromCloud,
+  saveBrandToCloud,
+  deleteBrandFromCloud,
+  saveOrderToCloud,
+  updateOrderInCloud,
+  publishSettingsToCloud,
+  seedInitialFirestoreData,
+} from '../utils/firebaseSync';
 
 export interface CartNotificationData {
   product: Product;
@@ -431,6 +448,68 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [orders]);
 
+  // ================= CLOUD FIRESTORE SYNCHRONIZATION =================
+  useEffect(() => {
+    // 1. Initial Cloud Seeding (if database is empty)
+    seedInitialFirestoreData();
+
+    // 2. Real-time Products Sync
+    const unsubProducts = listenToProducts((cloudProducts) => {
+      if (Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+        setProducts(cloudProducts);
+        safeStorage.setItem('mb_products', JSON.stringify(cloudProducts));
+      }
+    });
+
+    // 3. Real-time Categories Sync
+    const unsubCategories = listenToCategories((cloudCategories) => {
+      if (Array.isArray(cloudCategories) && cloudCategories.length > 0) {
+        setCategories(cloudCategories);
+        safeStorage.setItem('mb_categories', JSON.stringify(cloudCategories));
+      }
+    });
+
+    // 4. Real-time Brands Sync
+    const unsubBrands = listenToBrands((cloudBrands) => {
+      if (Array.isArray(cloudBrands) && cloudBrands.length > 0) {
+        setBrands(cloudBrands);
+        safeStorage.setItem('mb_brands', JSON.stringify(cloudBrands));
+      }
+    });
+
+    // 5. Real-time Orders Sync
+    const unsubOrders = listenToOrders((cloudOrders) => {
+      if (Array.isArray(cloudOrders)) {
+        setOrders(cloudOrders);
+        safeStorage.setItem('mb_orders', JSON.stringify(cloudOrders));
+      }
+    });
+
+    // 6. Real-time Store Settings & Customization Sync
+    const unsubSettings = listenToStoreSettings((cloudData) => {
+      if (cloudData.storeSettings) {
+        setStoreSettings(cloudData.storeSettings);
+        safeStorage.setItem('mb_store_settings', JSON.stringify(cloudData.storeSettings));
+      }
+      if (cloudData.themeSettings) {
+        setThemeSettings(cloudData.themeSettings);
+        safeStorage.setItem('mb_theme_settings', JSON.stringify(cloudData.themeSettings));
+      }
+      if (cloudData.heroSlides && cloudData.heroSlides.length > 0) {
+        setHeroSlides(cloudData.heroSlides);
+        safeStorage.setItem('mb_hero_slides', JSON.stringify(cloudData.heroSlides));
+      }
+    });
+
+    return () => {
+      unsubProducts();
+      unsubCategories();
+      unsubBrands();
+      unsubOrders();
+      unsubSettings();
+    };
+  }, []);
+
   // Cart operations with comprehensive safety guards
   const addToCart = (product: Product, variantId?: string, quantity: number = 1, openDrawer: boolean = false) => {
     if (!product || !product.id) return;
@@ -706,10 +785,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentOrder(newOrder);
     clearCart();
     setActiveView('order-success');
+    
+    // Persist new order to cloud Firestore
+    saveOrderToCloud(newOrder);
+    
     return newOrder;
   };
 
   const updateOrderStatus = (orderId: string, newStatus: OrderStatus, note: string) => {
+    let updatedOrder: Order | null = null;
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
@@ -722,18 +806,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             changed_by: 'المدير المسؤول (لوحة التحكم)',
             created_at: new Date().toISOString(),
           };
-          return {
+          updatedOrder = {
             ...ord,
             status: newStatus,
             logs: [newLog, ...ord.logs],
           };
+          return updatedOrder;
         }
         return ord;
       })
     );
+
+    if (updatedOrder) {
+      updateOrderInCloud(orderId, updatedOrder);
+    }
   };
 
   const verifyBankTransferReceipt = (orderId: string, verified: boolean, notes?: string) => {
+    let updatedOrder: Order | null = null;
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
@@ -748,7 +838,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             changed_by: 'المدير المالي (لوحة التحكم)',
             created_at: new Date().toISOString(),
           };
-          return {
+          updatedOrder = {
             ...ord,
             bank_transfer_verified: verified,
             bank_transfer_verified_at: verified ? new Date().toISOString() : undefined,
@@ -756,10 +846,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             status: verified && ord.status === 'new' ? 'confirmed' : ord.status,
             logs: [newLog, ...ord.logs],
           };
+          return updatedOrder;
         }
         return ord;
       })
     );
+
+    if (updatedOrder) {
+      updateOrderInCloud(orderId, updatedOrder);
+    }
   };
 
   const addManualOrder = (orderData: Partial<Order>) => {
@@ -802,6 +897,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+    saveOrderToCloud(newOrder);
   };
 
   // Customization & Settings Management
@@ -825,6 +921,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     safeStorage.setItem('mb_store_settings', JSON.stringify(storeSettings));
     safeStorage.setItem('mb_theme_settings', JSON.stringify(themeSettings));
     setHasUnpublishedChanges(false);
+    
+    // Publish settings & slides to cloud Firestore for all devices
+    publishSettingsToCloud(storeSettings, themeSettings, heroSlides);
   };
 
   const restoreDefaultCustomization = () => {
@@ -835,6 +934,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     safeStorage.removeItem('mb_store_settings');
     safeStorage.removeItem('mb_theme_settings');
     setHasUnpublishedChanges(false);
+    
+    publishSettingsToCloud(initialStoreSettings, initialThemeSettings, initialHeroSlides);
   };
 
   // Product CRUD
@@ -851,6 +952,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       safeStorage.setItem('mb_products', JSON.stringify(updated));
       return updated;
     });
+    // Persist product to cloud Firestore
+    saveProductToCloud(productToSave);
   };
 
   const deleteProduct = (productId: string) => {
@@ -859,6 +962,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       safeStorage.setItem('mb_products', JSON.stringify(updated));
       return updated;
     });
+    // Delete product from cloud Firestore
+    deleteProductFromCloud(productId);
   };
 
   // Category CRUD
@@ -875,6 +980,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       safeStorage.setItem('mb_categories', JSON.stringify(updated));
       return updated;
     });
+    // Persist category to cloud Firestore
+    saveCategoryToCloud(categoryToSave);
   };
 
   const deleteCategory = (categoryId: string) => {
@@ -883,6 +990,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       safeStorage.setItem('mb_categories', JSON.stringify(updated));
       return updated;
     });
+    // Delete category from cloud Firestore
+    deleteCategoryFromCloud(categoryId);
   };
 
   // Brand CRUD
@@ -899,6 +1008,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       safeStorage.setItem('mb_brands', JSON.stringify(updated));
       return updated;
     });
+    // Persist brand to cloud Firestore
+    saveBrandToCloud(brandToSave);
   };
 
   const deleteBrand = (brandId: string) => {
@@ -907,6 +1018,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       safeStorage.setItem('mb_brands', JSON.stringify(updated));
       return updated;
     });
+    // Delete brand from cloud Firestore
+    deleteBrandFromCloud(brandId);
   };
 
   // Policy modal/view
