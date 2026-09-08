@@ -118,7 +118,7 @@ export const AdminLoginView: React.FC = () => {
 
           {/* Logo */}
           <div className="flex justify-center mb-3 relative z-10">
-            <MiniBazaarLogo variant="onDark" size="md" />
+            <MiniBazaarLogo variant="compact" inverted={true} textColor="#F5E9D8" />
           </div>
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C6A36A]/20 border border-[#C6A36A]/40 text-[#E7D4BC] text-[11px] font-semibold mb-2">

@@ -16,8 +16,9 @@ export const CartDrawer: React.FC = () => {
   if (!isCartOpen) return null;
 
   const freeShippingThreshold = 450;
-  const remainingForFreeShipping = Math.max(0, freeShippingThreshold - cartSubtotal);
-  const progressPercent = Math.min(100, Math.round((cartSubtotal / freeShippingThreshold) * 100));
+  const safeCartSubtotal = typeof cartSubtotal === 'number' && !isNaN(cartSubtotal) ? cartSubtotal : 0;
+  const remainingForFreeShipping = Math.max(0, freeShippingThreshold - safeCartSubtotal);
+  const progressPercent = Math.min(100, Math.round((safeCartSubtotal / freeShippingThreshold) * 100)) || 0;
 
   const handleProceedToCheckout = () => {
     setIsCartOpen(false);
@@ -39,7 +40,7 @@ export const CartDrawer: React.FC = () => {
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-[#C6A36A]" />
               <h2 className="text-base font-bold text-[#6F584A] font-heading">
-                سلة المقتنيات ({cart.reduce((a, b) => a + b.quantity, 0)})
+                سلة المقتنيات ({Array.isArray(cart) ? cart.reduce((a, b) => a + (b?.quantity || 1), 0) : 0})
               </h2>
             </div>
 
@@ -78,21 +79,40 @@ export const CartDrawer: React.FC = () => {
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {cart.length > 0 ? (
-              cart.map((item) => {
-                const itemPrice = item.variant?.price ?? item.product.price;
-                const lineTotal = itemPrice * item.quantity;
+              cart.map((item, idx) => {
+                if (!item || !item.product) return null;
+
+                const itemPrice =
+                  typeof item.variant?.price === 'number'
+                    ? item.variant.price
+                    : typeof item.product.price === 'number'
+                    ? item.product.price
+                    : 0;
+
+                const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+                const lineTotal = itemPrice * quantity;
+                const itemKey = `${item.product.id || idx}-${item.variant?.id || 'default'}-${idx}`;
+                const imageSrc =
+                  item.variant?.image_path ||
+                  (Array.isArray(item.product.images) && item.product.images[0]?.path) ||
+                  'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80';
+                const displayName = item.product.name_ar || item.product.name_en || 'منتج ميني بازار';
 
                 return (
                   <div
-                    key={`${item.product.id}-${item.variant?.id || 'default'}`}
+                    key={itemKey}
                     className="flex gap-3 bg-white p-3.5 rounded-[18px] border border-[#E7D4BC] shadow-2xs"
                   >
                     {/* Item Thumbnail */}
-                    <div className="w-20 h-20 rounded-[12px] bg-[#F7F1E8] overflow-hidden shrink-0 border border-[#E5D8C9]">
+                    <div className="w-20 h-20 rounded-[12px] bg-[#F7F1E8] overflow-hidden shrink-0 border border-[#E5D8C9] flex items-center justify-center">
                       <img
-                        src={item.variant?.image_path || item.product.images[0]?.path}
-                        alt={item.variant?.name_ar || item.product.name_ar}
+                        src={imageSrc}
+                        alt={item.variant?.name_ar || displayName}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80';
+                        }}
                       />
                     </div>
 
@@ -100,7 +120,7 @@ export const CartDrawer: React.FC = () => {
                     <div className="flex-1 flex flex-col justify-between text-right">
                       <div>
                         <h4 className="text-xs sm:text-sm font-bold text-[#2F2B28] font-heading line-clamp-1">
-                          {item.product.name_ar}
+                          {displayName}
                         </h4>
                         {item.variant && (
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -111,7 +131,7 @@ export const CartDrawer: React.FC = () => {
                               />
                             )}
                             <span className="text-[11px] text-[#8A7465] font-medium">
-                              {item.variant.name_ar}
+                              {item.variant.name_ar || item.variant.name_en}
                             </span>
                           </div>
                         )}
@@ -125,7 +145,7 @@ export const CartDrawer: React.FC = () => {
                         <div className="flex items-center border border-[#D9C1A7] rounded-[10px] bg-[#FBF8F3] px-1.5 py-0.5">
                           <button
                             onClick={() =>
-                              updateCartQuantity(item.product.id, item.variant?.id, item.quantity - 1)
+                              updateCartQuantity(item.product.id, item.variant?.id, quantity - 1)
                             }
                             className="p-1 text-[#6F584A] hover:bg-[#E7D4BC] rounded-[6px]"
                             aria-label="إنقاص الكمية"
@@ -133,11 +153,11 @@ export const CartDrawer: React.FC = () => {
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="w-6 text-center text-xs font-bold text-[#2F2B28]">
-                            {item.quantity}
+                            {quantity}
                           </span>
                           <button
                             onClick={() =>
-                              updateCartQuantity(item.product.id, item.variant?.id, item.quantity + 1)
+                              updateCartQuantity(item.product.id, item.variant?.id, quantity + 1)
                             }
                             className="p-1 text-[#6F584A] hover:bg-[#E7D4BC] rounded-[6px]"
                             aria-label="زيادة الكمية"

@@ -79,7 +79,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
       opacity: 1,
       scale: 1,
       transition: {
-        x: { type: 'spring', stiffness: 250, damping: 28 },
+        x: { type: 'spring' as const, stiffness: 250, damping: 28 },
         opacity: { duration: 0.45 },
       },
     },
@@ -89,7 +89,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
       opacity: 0,
       scale: 0.98,
       transition: {
-        x: { type: 'spring', stiffness: 250, damping: 28 },
+        x: { type: 'spring' as const, stiffness: 250, damping: 28 },
         opacity: { duration: 0.35 },
       },
     }),

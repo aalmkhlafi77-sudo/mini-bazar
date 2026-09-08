@@ -10,9 +10,12 @@ import {
   MapPin,
   CreditCard,
   Sparkles,
+  FileCheck,
+  Eye,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { MiniBazaarLogo } from './MiniBazaarLogo';
+import { OrderProgressTimeline } from './OrderProgressTimeline';
 
 export const OrderSuccessView: React.FC = () => {
   const { currentOrder, setActiveView, storeSettings } = useStore();
@@ -44,6 +47,220 @@ export const OrderSuccessView: React.FC = () => {
     );
 
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+  };
+
+  const handlePrintReceipt = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const itemsHtml = currentOrder.items
+      .map(
+        (it) => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #E5D8C9; text-align: right;">${it.product_name_snapshot} ${it.variant_name_snapshot ? `(${it.variant_name_snapshot})` : ''}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #E5D8C9; text-align: center;">${it.quantity}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #E5D8C9; text-align: left;" dir="ltr">${it.unit_price} ر.س</td>
+          <td style="padding: 10px; border-bottom: 1px solid #E5D8C9; text-align: left; font-weight: bold;" dir="ltr">${it.line_total} ر.س</td>
+        </tr>
+      `
+      )
+      .join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>إيصال طلب رقم ${currentOrder.order_number}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+          body {
+            font-family: 'Cairo', Tahoma, Arial, sans-serif;
+            color: #2F2B28;
+            background: #fff;
+            padding: 30px;
+            margin: 0;
+            direction: rtl;
+            text-align: right;
+          }
+          .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #E5D8C9;
+            border-radius: 16px;
+            padding: 30px;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #E5D8C9;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+          }
+          .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2F2B28;
+          }
+          .order-badge {
+            background: #F7F1E8;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+          th {
+            background: #F4ECE2;
+            padding: 10px;
+            text-align: right;
+            font-size: 13px;
+          }
+          .totals {
+            margin-top: 20px;
+            border-top: 1px solid #E5D8C9;
+            padding-top: 15px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 14px;
+          }
+          .grand-total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #6F584A;
+            border-top: 2px solid #2F2B28;
+            padding-top: 10px;
+            margin-top: 5px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 12px;
+            color: #7C736D;
+            border-top: 1px dashed #E5D8C9;
+            padding-top: 20px;
+          }
+          @media print {
+            body { padding: 0; }
+            .receipt-container { border: none; padding: 10px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-container">
+          <div class="header">
+            <div>
+              <div class="logo">ميني بازار | Mini Bazaar</div>
+              <div style="font-size: 12px; color: #7C736D; margin-top: 4px;">متجرك الأول للأزياء والإكسسوارات الفاخرة</div>
+            </div>
+            <div style="text-align: left;">
+              <div style="font-size: 14px; font-weight: bold; color: #607866;">✓ تم اعتماد وحفظ الطلب</div>
+              <div style="font-size: 12px; color: #7C736D; margin-top: 4px;">التاريخ: ${new Date(currentOrder.placed_at).toLocaleDateString('ar-SA')}</div>
+            </div>
+          </div>
+
+          <div class="order-badge">
+            <div>
+              <span style="font-size: 11px; color: #8A7465; display: block; margin-bottom: 2px;">رقم الطلب المرجعي:</span>
+              <span style="font-size: 22px; font-weight: bold; font-family: monospace;" dir="ltr">${currentOrder.order_number}</span>
+            </div>
+            <div style="text-align: left; font-size: 12px; color: #5F5751;">
+              <div>طريقة الدفع: <strong>${currentOrder.payment_method_snapshot.name_ar}</strong></div>
+              <div>طريقة التوصيل: <strong>${currentOrder.delivery_method_snapshot.name_ar}</strong></div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 20px; font-size: 13px; background: #FBF8F3; padding: 15px; border-radius: 12px;">
+            <div>
+              <strong>بيانات العميل:</strong><br>
+              ${currentOrder.customer_name_snapshot}<br>
+              <span dir="ltr">${currentOrder.customer_phone_snapshot}</span>
+            </div>
+            <div>
+              <strong>عنوان التسليم:</strong><br>
+              ${currentOrder.address_snapshot.city}، ${currentOrder.address_snapshot.district}<br>
+              ${currentOrder.address_snapshot.street || ''}
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>المنتج / الصنف</th>
+                <th style="text-align: center;">الكمية</th>
+                <th style="text-align: left;">السعر الفردي</th>
+                <th style="text-align: left;">المجموع</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="total-row">
+              <span>مجموع المنتجات:</span>
+              <span dir="ltr">${currentOrder.subtotal} ر.س</span>
+            </div>
+            <div class="total-row">
+              <span>رسوم التوصيل:</span>
+              <span dir="ltr">${currentOrder.delivery_fee} ر.س</span>
+            </div>
+            ${
+              currentOrder.discount_total > 0
+                ? `<div class="total-row" style="color: #607866;">
+                     <span>الخصم المطبق:</span>
+                     <span dir="ltr">-${currentOrder.discount_total} ر.س</span>
+                   </div>`
+                : ''
+            }
+            <div class="total-row grand-total">
+              <span>المجموع الإجمالي:</span>
+              <span dir="ltr">${currentOrder.grand_total} ر.س</span>
+            </div>
+          </div>
+
+          ${
+            currentOrder.bank_transfer_receipt
+              ? `<div style="margin-top: 20px; padding: 12px; background: #FFF8EE; border: 1px solid #C6A36A; border-radius: 10px; font-size: 12px;">
+                   <strong>حالة التحويل البنكي:</strong> تم إرفاق إشعار الحوالة البنكية بنجاح وجاري مطابقتها مع الحساب البنكي.
+                 </div>`
+              : ''
+          }
+
+          <div class="footer">
+            <p>شكراً لتسوقكم في ميني بازار | نسعد دائماً بخدمتكم</p>
+            <p style="font-size: 10px; margin-top: 4px;">هذا إيصال إلكتروني صادر عن النظام ولا يحتاج إلى ختم.</p>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 400);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   return (
@@ -79,6 +296,11 @@ export const OrderSuccessView: React.FC = () => {
           <div className="text-center sm:text-left text-xs text-[#5F5751]">
             <p>احتفظي برقم الطلب لتتبع حالة الشحنة أو عند التواصل مع خدمة العملاء.</p>
           </div>
+        </div>
+
+        {/* Order Progress Timeline */}
+        <div className="mb-6">
+          <OrderProgressTimeline status={currentOrder.status} logs={currentOrder.logs} />
         </div>
 
         {/* Customer & Address & Shipping details */}
@@ -176,8 +398,41 @@ export const OrderSuccessView: React.FC = () => {
         {/* Bank transfer guidance if applicable */}
         {currentOrder.payment_method_snapshot.type === 'bank_transfer' && (
           <div className="mb-8 p-4 rounded-[16px] bg-[#FFF8EE] border border-[#C6A36A]/40 text-xs text-[#2F2B28] leading-relaxed">
-            <strong className="block font-bold mb-1">تعليمات إتمام التحويل البنكي:</strong>
-            يرجى تحويل المبلغ الإجمالي إلى حساب مؤسسة ميني بازار (الآيبان: SA44 8000 0204 6080 1000 9999)، ثم الضغط على الزر أدناه لإرسال صورة الإيصال عبر الواتساب لتأكيد خروج الشحنة مباشرة.
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <strong className="block font-bold mb-1 text-[#6F584A]">
+                  حالة التحويل البنكي الرسمي:
+                </strong>
+                {currentOrder.bank_transfer_receipt ? (
+                  <div className="space-y-1">
+                    <p className="text-[#607866] font-semibold flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-[#607866]" />
+                      تم إرفاق صورة إشعار الحوالة البنكية بنجاح مع طلبك.
+                    </p>
+                    <p className="text-[#7C736D]">
+                      سيقوم قسم التدقيق المالي بمطابقة الإشعار مع كشف الحساب البنكي واعتماد شحن الطلب فوراً.
+                    </p>
+                  </div>
+                ) : (
+                  <p>
+                    يرجى تحويل المبلغ الإجمالي إلى حساب مؤسسة ميني بازار (الآيبان: SA44 8000 0204 6080 1000 9999)، ثم الضغط على الزر أدناه لمشاركة تفاصيل الطلب وإرسال صورة الإيصال عبر الواتساب لتأكيد خروج الشحنة.
+                  </p>
+                )}
+              </div>
+
+              {currentOrder.bank_transfer_receipt && (
+                <div className="shrink-0 flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-[10px] overflow-hidden border border-[#D9C1A7] bg-white">
+                    <img
+                      src={currentOrder.bank_transfer_receipt}
+                      alt="إشعار الحوالة"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="text-[10px] text-[#8A7465] mt-1 font-semibold">إشعار مرفق</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -193,7 +448,7 @@ export const OrderSuccessView: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => window.print()}
+              onClick={handlePrintReceipt}
               className="flex items-center gap-2 px-5 py-3 rounded-[14px] border border-[#D9C1A7] text-[#2F2B28] hover:bg-[#FBF8F3] text-xs font-semibold"
             >
               <Printer className="w-4 h-4" />

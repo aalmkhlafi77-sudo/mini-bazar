@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ShieldCheck,
   Truck,
@@ -11,9 +11,60 @@ import {
   Clock,
   Sparkles,
   ChevronRight,
+  Camera,
+  UploadCloud,
+  X,
+  Eye,
+  FileCheck,
+  Check,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { MiniBazaarLogo } from './MiniBazaarLogo';
+
+// Helper to compress uploaded receipt image to lightweight JPEG
+const compressReceiptImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('فشل قراءة الملف'));
+    reader.readAsDataURL(file);
+  });
+};
 
 export const CheckoutView: React.FC = () => {
   const {
@@ -40,6 +91,17 @@ export const CheckoutView: React.FC = () => {
   const [copiedIban, setCopiedIban] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Bank Transfer Receipt & Confirmation state
+  const [bankReceiptImage, setBankReceiptImage] = useState<string | null>(null);
+  const [bankReceiptFileName, setBankReceiptFileName] = useState<string>('');
+  const [isBankTransferConfirmed, setIsBankTransferConfirmed] = useState<boolean>(false);
+  const [isProcessingReceipt, setIsProcessingReceipt] = useState<boolean>(false);
+  const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState<boolean>(false);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (cart.length === 0) {
     return (
@@ -74,6 +136,61 @@ export const CheckoutView: React.FC = () => {
     setTimeout(() => setCopiedIban(false), 2500);
   };
 
+  const handleProcessFile = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('يرجى اختيار ملف صورة صالح (JPG, PNG, WebP) لإشعار الحوالة');
+      return;
+    }
+
+    try {
+      setIsProcessingReceipt(true);
+      setErrorMessage(null);
+      const compressedDataUrl = await compressReceiptImage(file);
+      setBankReceiptImage(compressedDataUrl);
+      setBankReceiptFileName(file.name || 'bank_receipt.jpg');
+      setIsBankTransferConfirmed(true);
+    } catch (err) {
+      console.error('Error compressing receipt image:', err);
+      setErrorMessage('تعذر معالجة صورة الإشعار، يرجى المحاولة بصورة أخرى أو بصيغة JPG');
+    } finally {
+      setIsProcessingReceipt(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleProcessFile(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleProcessFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  };
+
+  const handleRemoveReceipt = () => {
+    setBankReceiptImage(null);
+    setBankReceiptFileName('');
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -94,6 +211,11 @@ export const CheckoutView: React.FC = () => {
       return;
     }
 
+    if (selectedPayment.type === 'bank_transfer' && !isBankTransferConfirmed && !bankReceiptImage) {
+      setErrorMessage('يرجى تأكيد خيار "تم تحويل المبلغ" أو إرفاق إشعار الحوالة البنكية لإتمام الطلب.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -107,11 +229,12 @@ export const CheckoutView: React.FC = () => {
           district,
           street,
           building,
-          notes,
         },
         deliveryMethodId: selectedDeliveryId,
         paymentMethodId: selectedPaymentId,
         customerNotes: notes,
+        bankTransferReceipt: bankReceiptImage || undefined,
+        bankTransferConfirmed: isBankTransferConfirmed || Boolean(bankReceiptImage),
       });
     } catch (err: any) {
       setErrorMessage('حدث خطأ أثناء معالجة الطلب، يرجى المحاولة مرة أخرى.');
@@ -385,38 +508,210 @@ export const CheckoutView: React.FC = () => {
                       </div>
                     </label>
 
-                    {/* Bank Details Dropdown if selected */}
-                    {isSelected && method.type === 'bank_transfer' && method.bank_details && (
-                      <div className="mx-4 mb-4 p-4 rounded-[14px] bg-white border border-[#D9C1A7] text-xs space-y-2">
-                        <div className="flex justify-between items-center text-[#5F5751]">
-                          <span>البنك المعتمد:</span>
-                          <span className="font-bold text-[#2F2B28]">{method.bank_details.bank_name}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[#5F5751]">
-                          <span>اسم الحساب:</span>
-                          <span className="font-bold text-[#2F2B28]">{method.bank_details.account_name}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[#5F5751] pt-1 border-t border-[#F4ECE2]">
-                          <span>رقم الآيبان (IBAN):</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-[#6F584A]" dir="ltr">
-                              {method.bank_details.iban}
+                    {/* Bank Details & Receipt Upload if selected */}
+                    {isSelected && method.type === 'bank_transfer' && (
+                      <div className="mx-4 mb-4 space-y-3">
+                        {/* 1. Bank Account Details Card */}
+                        {method.bank_details && (
+                          <div className="p-4 rounded-[16px] bg-white border border-[#D9C1A7] text-xs space-y-2.5 shadow-2xs">
+                            <div className="flex justify-between items-center text-[#5F5751]">
+                              <span>البنك المعتمد:</span>
+                              <span className="font-bold text-[#2F2B28]">{method.bank_details.bank_name}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[#5F5751]">
+                              <span>اسم الحساب:</span>
+                              <span className="font-bold text-[#2F2B28]">{method.bank_details.account_name}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[#5F5751] pt-1.5 border-t border-[#F4ECE2]">
+                              <span>المبلغ المطلوب تحويله:</span>
+                              <span className="font-bold text-[#6F584A] text-sm" dir="ltr">
+                                {grandTotal} ر.س
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-[#5F5751] pt-1.5 border-t border-[#F4ECE2]">
+                              <span>رقم الآيبان (IBAN):</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-[#6F584A] text-xs sm:text-sm tracking-wider" dir="ltr">
+                                  {method.bank_details.iban}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyIban(method.bank_details!.iban)}
+                                  className="p-1.5 rounded-lg bg-[#F4ECE2] text-[#8A7465] hover:text-[#6F584A] transition-colors"
+                                  title="نسخ الآيبان"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            {copiedIban && (
+                              <div className="flex items-center justify-center gap-1 text-[11px] text-[#25D366] font-bold pt-1">
+                                <Check className="w-3.5 h-3.5" />
+                                <span>تم نسخ رقم الآيبان إلى الحافظة بنجاح</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 2. Receipt Upload & Mobile Camera Card */}
+                        <div className="p-4 rounded-[16px] bg-white border border-[#D9C1A7] text-xs space-y-3 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[#2F2B28] flex items-center gap-1.5 text-xs sm:text-sm">
+                              <Camera className="w-4 h-4 text-[#C6A36A]" />
+                              <span>إرفاق إشعار / إيصال الحوالة البنكية</span>
                             </span>
+                            {bankReceiptImage && (
+                              <span className="text-[11px] font-bold text-[#25D366] bg-[#25D366]/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <FileCheck className="w-3 h-3" />
+                                <span>مرفق جاهز</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-[#7C736D] leading-relaxed">
+                            ارفع صورة إشعار الحوالة من جهازك أو التقطها فوراً بكاميرا الجوال لتسريع المطابقة واعتماد الطلب.
+                          </p>
+
+                          {/* Hidden File and Camera Inputs */}
+                          <input
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleFileChange}
+                          />
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileChange}
+                          />
+
+                          {/* Dual Action Buttons */}
+                          <div className="grid grid-cols-2 gap-2.5 pt-1">
                             <button
                               type="button"
-                              onClick={() => handleCopyIban(method.bank_details!.iban)}
-                              className="p-1 rounded bg-[#F4ECE2] text-[#8A7465] hover:text-[#6F584A]"
-                              title="نسخ الآيبان"
+                              onClick={() => cameraInputRef.current?.click()}
+                              disabled={isProcessingReceipt}
+                              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-[12px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#2F2B28] font-bold text-xs transition-all active:scale-98 border border-[#D9C1A7]"
                             >
-                              <Copy className="w-3.5 h-3.5" />
+                              <Camera className="w-4 h-4 text-[#C6A36A]" />
+                              <span>التقاط بالكاميرا</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={isProcessingReceipt}
+                              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-[12px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#2F2B28] font-bold text-xs transition-all active:scale-98 border border-[#D9C1A7]"
+                            >
+                              <UploadCloud className="w-4 h-4 text-[#C6A36A]" />
+                              <span>اختيار من الجهاز</span>
                             </button>
                           </div>
+
+                          {/* Drag & Drop Box or Uploaded Preview */}
+                          {!bankReceiptImage ? (
+                            <div
+                              onDrop={handleDrop}
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onClick={() => fileInputRef.current?.click()}
+                              className={`border-2 border-dashed rounded-[14px] p-4 text-center cursor-pointer transition-all ${
+                                isDraggingOver
+                                  ? 'border-[#C6A36A] bg-[#F4ECE2]/60'
+                                  : 'border-[#E5D8C9] hover:border-[#C6A36A] bg-[#FBF8F3]'
+                              }`}
+                            >
+                              {isProcessingReceipt ? (
+                                <div className="py-2 text-[#C6A36A] font-bold flex items-center justify-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-[#C6A36A] border-t-transparent rounded-full animate-spin" />
+                                  <span>جاري معالجة وضغط صورة الإشعار...</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <UploadCloud className="w-6 h-6 text-[#8A7465] mx-auto opacity-70" />
+                                  <p className="text-[11px] text-[#5F5751] font-semibold">
+                                    اسحب صورة الإيصال وأفلتها هنا، أو اضغط للاختيار
+                                  </p>
+                                  <p className="text-[10px] text-[#8A7465]">
+                                    صيغ مدعومة: JPG, PNG, WebP (يتم الضغط تلقائياً)
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-[14px] bg-[#FAF6F0] border border-[#C6A36A]/60 flex items-center justify-between gap-3 animate-in fade-in">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  onClick={() => setIsReceiptPreviewOpen(true)}
+                                  className="w-14 h-14 rounded-[10px] overflow-hidden bg-black/5 shrink-0 border border-[#D9C1A7] cursor-pointer relative group"
+                                  title="انقر لتكبير ومعاينة الصورة"
+                                >
+                                  <img
+                                    src={bankReceiptImage}
+                                    alt="إشعار الحوالة البنكية"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Eye className="w-4 h-4 text-white" />
+                                  </div>
+                                </div>
+
+                                <div className="min-w-0 text-right">
+                                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#2F2B28]">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#25D366]" />
+                                    <span className="truncate">{bankReceiptFileName || 'صورة إشعار الحوالة'}</span>
+                                  </div>
+                                  <span className="text-[10px] text-[#25D366] font-semibold block mt-0.5">
+                                    تم حفظ الإيصال وسيتم إرفاقه مع الطلب
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsReceiptPreviewOpen(true)}
+                                  className="p-2 rounded-lg bg-[#F4ECE2] text-[#2F2B28] hover:bg-[#E7D4BC] transition-colors"
+                                  title="معاينة بالحجم الكامل"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveReceipt}
+                                  className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                  title="حذف أو استبدال"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 3. Customer Transfer Confirmation Checkbox */}
+                          <div className="pt-2 border-t border-[#F4ECE2]">
+                            <label className="flex items-start gap-3 p-3 rounded-[12px] bg-[#FAF6F0] border border-[#D9C1A7] cursor-pointer hover:bg-[#F4ECE2]/50 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={isBankTransferConfirmed}
+                                onChange={(e) => setIsBankTransferConfirmed(e.target.checked)}
+                                className="mt-1 w-4 h-4 accent-[#6F584A] rounded cursor-pointer"
+                              />
+                              <div className="text-right">
+                                <span className="font-bold text-[#2F2B28] block text-xs">
+                                  تم تحويل المبلغ ({grandTotal} ر.س) لحساب المتجر الرسمي
+                                </span>
+                                <span className="text-[11px] text-[#7C736D] block mt-0.5">
+                                  أؤكد إتمام التحويل البنكي للمطابقة مع البنك تمهيداً لتجهيز وشحن الطلب فوراً.
+                                </span>
+                              </div>
+                            </label>
+                          </div>
                         </div>
-                        {copiedIban && (
-                          <span className="text-[11px] text-[#607866] block text-center font-bold">
-                            تم نسخ رقم الآيبان إلى الحافظة
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
@@ -445,34 +740,51 @@ export const CheckoutView: React.FC = () => {
         {/* Right/Order Summary Column (5 cols) */}
         <div className="lg:col-span-5 bg-white p-6 rounded-[24px] border border-[#E5D8C9] shadow-2xs text-right sticky top-28">
           <h3 className="text-base font-bold text-[#6F584A] font-heading mb-4 pb-3 border-b border-[#F4ECE2]">
-            ملخص مقتنيات الطلب ({cart.reduce((a, b) => a + b.quantity, 0)})
+            ملخص مقتنيات الطلب ({Array.isArray(cart) ? cart.reduce((a, b) => a + (b?.quantity || 1), 0) : 0})
           </h3>
 
           {/* Items Preview */}
           <div className="space-y-3 max-h-72 overflow-y-auto pr-1 mb-4">
-            {cart.map((item) => {
-              const itemPrice = item.variant?.price ?? item.product.price;
+            {cart.map((item, idx) => {
+              if (!item || !item.product) return null;
+              const itemPrice =
+                typeof item.variant?.price === 'number'
+                  ? item.variant.price
+                  : typeof item.product.price === 'number'
+                  ? item.product.price
+                  : 0;
+              const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+              const imgSrc =
+                item.variant?.image_path ||
+                (Array.isArray(item.product.images) && item.product.images[0]?.path) ||
+                'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80';
+              const displayName = item.product.name_ar || item.product.name_en || 'منتج ميني بازار';
+
               return (
                 <div
-                  key={`${item.product.id}-${item.variant?.id || 'd'}`}
+                  key={`${item.product.id || idx}-${item.variant?.id || 'd'}-${idx}`}
                   className="flex items-center gap-3 py-2 border-b border-[#F4ECE2] last:border-none"
                 >
                   <img
-                    src={item.product.images[0]?.path}
-                    alt={item.product.name_ar}
+                    src={imgSrc}
+                    alt={displayName}
                     className="w-14 h-14 rounded-[10px] object-cover bg-[#F7F1E8] border border-[#E7D4BC] shrink-0"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80';
+                    }}
                   />
                   <div className="flex-1">
                     <h4 className="text-xs font-bold text-[#2F2B28] font-heading line-clamp-1">
-                      {item.product.name_ar}
+                      {displayName}
                     </h4>
                     {item.variant && (
-                      <span className="text-[10px] text-[#8A7465] block">{item.variant.name_ar}</span>
+                      <span className="text-[10px] text-[#8A7465] block">{item.variant.name_ar || item.variant.name_en}</span>
                     )}
-                    <span className="text-xs text-[#7C736D]">الكمية: {item.quantity}</span>
+                    <span className="text-xs text-[#7C736D]">الكمية: {quantity}</span>
                   </div>
                   <span className="text-xs font-bold text-[#6F584A]" dir="ltr">
-                    {itemPrice * item.quantity} ر.س
+                    {itemPrice * quantity} ر.س
                   </span>
                 </div>
               );
@@ -520,6 +832,58 @@ export const CheckoutView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Receipt Image Full Preview Lightbox Modal */}
+      {isReceiptPreviewOpen && bankReceiptImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setIsReceiptPreviewOpen(false)}
+        >
+          <div
+            className="bg-white rounded-[24px] max-w-xl w-full p-5 text-right overflow-hidden shadow-2xl border border-[#D9C1A7]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5D8C9] mb-4">
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-[#C6A36A]" />
+                <h4 className="font-bold text-[#2F2B28] text-sm">
+                  معاينة إشعار الحوالة البنكية المرفق
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReceiptPreviewOpen(false)}
+                className="p-1 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-auto rounded-[14px] bg-[#FBF8F3] p-2 flex items-center justify-center border border-[#E5D8C9]">
+              <img
+                src={bankReceiptImage}
+                alt="إشعار الحوالة"
+                className="max-w-full max-h-[65vh] object-contain rounded-[10px]"
+              />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between pt-2 border-t border-[#E5D8C9]">
+              <span className="text-xs text-[#7C736D]">
+                المبلغ المطلوب للطلب: <strong className="text-[#2F2B28]">{grandTotal} ر.س</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsReceiptPreviewOpen(false)}
+                className="px-4 py-2 bg-[#2F2B28] text-white rounded-[12px] text-xs font-bold hover:bg-[#231F1D]"
+              >
+                إغلاق المعاينة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

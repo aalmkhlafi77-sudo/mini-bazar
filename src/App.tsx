@@ -1,5 +1,6 @@
 import React from 'react';
 import { StoreProvider, useStore } from './context/StoreContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/Header';
 import { HeroSeamlessCarousel } from './components/HeroSeamlessCarousel';
 import { TrustBadges } from './components/TrustBadges';
@@ -14,6 +15,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { BottomNav } from './components/BottomNav';
+import { CartNotificationToast } from './components/CartNotificationToast';
 
 const MainLayout: React.FC = () => {
   const { activeView } = useStore();
@@ -38,7 +40,7 @@ const MainLayout: React.FC = () => {
 
         {activeView === 'checkout' && <CheckoutView />}
 
-        {activeView === 'order_success' && <OrderSuccessView />}
+        {activeView === 'order-success' && <OrderSuccessView />}
 
         {activeView === 'admin' && <AdminDashboard />}
       </main>
@@ -50,8 +52,13 @@ const MainLayout: React.FC = () => {
       <BottomNav />
 
       {/* Global Drawers, Modals & Floating WhatsApp */}
-      <CartDrawer />
-      <ProductDetailModal />
+      <ErrorBoundary fallback={null}>
+        <CartDrawer />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={null}>
+        <ProductDetailModal />
+      </ErrorBoundary>
+      <CartNotificationToast />
       <FloatingWhatsApp />
     </div>
   );
@@ -59,8 +66,11 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <StoreProvider>
-      <MainLayout />
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <MainLayout />
+      </StoreProvider>
+    </ErrorBoundary>
   );
 }
+

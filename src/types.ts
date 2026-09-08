@@ -182,6 +182,12 @@ export interface Order {
   admin_notes?: string;
   source: 'web' | 'whatsapp';
   placed_at: string;
+  created_at?: string;
+  bank_transfer_receipt?: string;
+  bank_transfer_confirmed?: boolean;
+  bank_transfer_verified?: boolean;
+  bank_transfer_verified_at?: string;
+  bank_transfer_notes?: string;
   items: OrderItemSnapshot[];
   logs: OrderStatusLog[];
 }
@@ -242,6 +248,20 @@ export interface CategoryCarouselSettings {
   title_ar?: string;
 }
 
+export type BrandDisplayMode = 'both' | 'logo_only' | 'name_only';
+export type BrandLogoSize = 'small' | 'medium' | 'large';
+
+export interface BrandSettings {
+  display_mode: BrandDisplayMode; // 'both' | 'logo_only' | 'name_only'
+  logo_size: BrandLogoSize; // 'small' | 'medium' | 'large'
+  show_product_count: boolean;
+  show_on_product_card: boolean;
+  show_in_product_modal: boolean;
+  show_filter_bar: boolean;
+  filter_title_ar?: string;
+  badge_style?: 'luxury' | 'minimal' | 'pill';
+}
+
 export interface StoreSettings {
   store_name_ar: string;
   store_name_en: string;
@@ -266,6 +286,9 @@ export interface StoreSettings {
   // Category Carousel Settings
   category_carousel?: CategoryCarouselSettings;
 
+  // Brand Display & Customization Settings
+  brand_settings?: BrandSettings;
+
   // WhatsApp & Communications
   whatsapp_default_message?: string;
   whatsapp_tooltip_badge_text?: string;
@@ -276,10 +299,20 @@ export interface StoreSettings {
   // Social Links
   social_links?: SocialLink[];
 
-  // Navigation Menu Items
+  // Navigation Menu Items & Header Styling
   navigation_items?: NavigationItem[];
+  header_bg_color?: string;
+  header_border_color?: string;
+  header_announcement_bg?: string;
+  header_announcement_text_color?: string;
+  header_nav_font_size?: 'xs' | 'sm' | 'base' | 'lg';
+  header_nav_font_weight?: 'normal' | 'medium' | 'semibold' | 'bold';
+  header_nav_text_color?: string;
+  header_nav_active_color?: string;
+  header_nav_badge_bg?: string;
+  header_nav_badge_color?: string;
 
-  // Footer Settings & Commitments
+  // Footer Settings, Styling & Commitments
   footer_bio_ar?: string;
   footer_verification_text_ar?: string;
   footer_copyright_ar?: string;
@@ -288,6 +321,15 @@ export interface StoreSettings {
   footer_columns?: FooterColumn[];
   footer_commitments?: { id: string; text_ar: string }[];
   footer_payment_methods?: string[];
+  footer_bg_color?: string;
+  footer_border_color?: string;
+  footer_text_color?: string;
+  footer_heading_color?: string;
+  footer_link_color?: string;
+  footer_badge_bg?: string;
+  footer_badge_color?: string;
+  footer_font_size?: 'xs' | 'sm' | 'base';
+  footer_font_weight?: 'normal' | 'medium' | 'semibold';
 }
 
 export type SocialPlatform =

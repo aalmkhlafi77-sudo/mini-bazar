@@ -4,6 +4,7 @@ import {
   Brand,
   Category,
   Product,
+  ProductVariant,
   CartItem,
   Order,
   OrderStatus,
@@ -30,6 +31,13 @@ import {
   verifySaltedHashSync,
   generateRandomSalt,
 } from '../utils/security';
+import { safeStorage } from '../utils/safeStorage';
+
+export interface CartNotificationData {
+  product: Product;
+  variant?: ProductVariant;
+  quantity: number;
+}
 
 interface StoreContextType {
   // Admin Authentication & Security
@@ -68,7 +76,7 @@ interface StoreContextType {
 
   // Cart
   cart: CartItem[];
-  addToCart: (product: Product, variantId?: string, quantity?: number) => void;
+  addToCart: (product: Product, variantId?: string, quantity?: number, openDrawer?: boolean) => void;
   updateCartQuantity: (productId: string, variantId: string | undefined, quantity: number) => void;
   removeFromCart: (productId: string, variantId?: string) => void;
   clearCart: () => void;
@@ -76,6 +84,8 @@ interface StoreContextType {
   cartCount: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  lastAddedNotification: CartNotificationData | null;
+  clearLastAddedNotification: () => void;
 
   // Wishlist
   wishlist: string[];
@@ -97,8 +107,11 @@ interface StoreContextType {
     deliveryMethodId: string;
     paymentMethodId: string;
     customerNotes?: string;
+    bankTransferReceipt?: string;
+    bankTransferConfirmed?: boolean;
   }) => Promise<Order>;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus, note: string) => void;
+  verifyBankTransferReceipt: (orderId: string, verified: boolean, notes?: string) => void;
   addManualOrder: (order: Partial<Order>) => void;
 
   // Hero Carousel & Customization
@@ -136,7 +149,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Admin Credentials & Authentication State with automatic security migration
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>(() => {
-    const saved = localStorage.getItem('mb_admin_credentials');
+    const saved = safeStorage.getItem('mb_admin_credentials');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -158,7 +171,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             recovery_pin_salt: pinSalt,
             last_updated: new Date().toISOString(),
           };
-          localStorage.setItem('mb_admin_credentials', JSON.stringify(secured));
+          safeStorage.setItem('mb_admin_credentials', JSON.stringify(secured));
           return secured;
         }
         return {
@@ -173,40 +186,92 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    const localSession = localStorage.getItem('mb_admin_auth_session');
-    const tempSession = sessionStorage.getItem('mb_admin_auth_session');
+    const localSession = safeStorage.getItem('mb_admin_auth_session');
+    const tempSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('mb_admin_auth_session') : null;
     return Boolean(localSession || tempSession);
   });
 
-  // State initialization with localStorage fallback
+  // State initialization with safeStorage fallback
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('mb_categories');
+    const saved = safeStorage.getItem('mb_categories');
     return saved ? JSON.parse(saved) : initialCategories;
   });
 
   const [brands, setBrands] = useState<Brand[]>(() => {
-    const saved = localStorage.getItem('mb_brands');
+    const saved = safeStorage.getItem('mb_brands');
     return saved ? JSON.parse(saved) : initialBrands;
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('mb_products');
-    return saved ? JSON.parse(saved) : initialProducts;
+    const saved = safeStorage.getItem('mb_products');
+    if (!saved) return initialProducts;
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed) || parsed.length === 0) return initialProducts;
+      return parsed.map((p, idx) => ({
+        ...p,
+        id: p.id || `prod-${idx + 1}`,
+        name_ar: p.name_ar || 'منتج ميني بازار',
+        name_en: p.name_en || '',
+        price: typeof p.price === 'number' ? p.price : 0,
+        compare_at_price: typeof p.compare_at_price === 'number' ? p.compare_at_price : undefined,
+        rating: typeof p.rating === 'number' ? p.rating : 5.0,
+        reviews_count: typeof p.reviews_count === 'number' ? p.reviews_count : 0,
+        availability_status: p.availability_status || 'available',
+        images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [
+          {
+            id: `img-${p.id || idx}-def`,
+            product_id: p.id,
+            path: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=800&q=80',
+            alt_text_ar: p.name_ar || 'منتج ميني بازار',
+            alt_text_en: p.name_en || 'Mini Bazaar Product',
+            sort_order: 1,
+            is_primary: true
+          }
+        ],
+        variants: Array.isArray(p.variants) && p.variants.length > 0 ? p.variants.map((v: any, vIdx: number) => ({
+          ...v,
+          id: v.id || `var-${p.id}-${vIdx}`,
+          name_ar: v.name_ar || 'الخيار الافتراضي',
+          name_en: v.name_en || '',
+          price: typeof v.price === 'number' ? v.price : (typeof p.price === 'number' ? p.price : 0),
+          availability_status: v.availability_status || 'available'
+        })) : [
+          {
+            id: `var-default-${p.id || idx}`,
+            product_id: p.id || `prod-${idx + 1}`,
+            name_ar: 'الخيار الافتراضي',
+            name_en: 'Default',
+            sku: p.sku || 'MB-DEF',
+            price: typeof p.price === 'number' ? p.price : 0,
+            availability_status: p.availability_status || 'available',
+            is_default: true,
+            sort_order: 1
+          }
+        ]
+      }));
+    } catch {
+      return initialProducts;
+    }
   });
 
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(() => {
-    const saved = localStorage.getItem('mb_hero_slides');
+    const saved = safeStorage.getItem('mb_hero_slides');
     return saved ? JSON.parse(saved) : initialHeroSlides;
   });
 
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {
-    const saved = localStorage.getItem('mb_store_settings');
+    const saved = safeStorage.getItem('mb_store_settings');
     if (!saved) return initialStoreSettings;
     try {
       const parsed = JSON.parse(saved);
       return {
         ...initialStoreSettings,
         ...parsed,
+        brand_settings: {
+          ...initialStoreSettings.brand_settings,
+          ...(parsed.brand_settings || {}),
+        },
         social_links: parsed.social_links || initialStoreSettings.social_links,
         navigation_items: parsed.navigation_items || initialStoreSettings.navigation_items,
         footer_columns: parsed.footer_columns || initialStoreSettings.footer_columns,
@@ -217,7 +282,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() => {
-    const saved = localStorage.getItem('mb_theme_settings');
+    const saved = safeStorage.getItem('mb_theme_settings');
     return saved ? JSON.parse(saved) : initialThemeSettings;
   });
 
@@ -227,22 +292,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [deliveryMethods] = useState<DeliveryMethod[]>(initialDeliveryMethods);
   const [paymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods);
 
-  // Cart & Wishlist
+  // Cart & Wishlist with rigorous sanitization
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('mb_cart');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeStorage.getItem('mb_cart');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      // Clean up and validate every item to ensure no undefined products or corrupt properties
+      return parsed.filter(
+        (item): item is CartItem =>
+          Boolean(item && item.product && typeof item.product === 'object' && item.product.id)
+      );
+    } catch {
+      return [];
+    }
   });
 
   const [wishlist, setWishlist] = useState<string[]>(() => {
-    const saved = localStorage.getItem('mb_wishlist');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeStorage.getItem('mb_wishlist');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
 
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('mb_orders');
+    const saved = safeStorage.getItem('mb_orders');
     return saved
       ? JSON.parse(saved)
       : [
@@ -309,6 +391,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [lastAddedNotification, setLastAddedNotification] = useState<CartNotificationData | null>(null);
+
+  const clearLastAddedNotification = () => {
+    setLastAddedNotification(null);
+  };
 
   // Navigation & View State
   const [activeView, setActiveView] = useState<'store' | 'product' | 'checkout' | 'order-success' | 'wishlist' | 'admin' | 'policy'>('store');
@@ -319,60 +406,181 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activePolicy, setActivePolicy] = useState<string | null>(null);
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
 
-  // Persistence to localStorage
+  // Persistence to storage with robust safeStorage guards
   useEffect(() => {
-    localStorage.setItem('mb_cart', JSON.stringify(cart));
+    try {
+      safeStorage.setItem('mb_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.warn('Failed to save cart to storage:', e);
+    }
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('mb_wishlist', JSON.stringify(wishlist));
+    try {
+      safeStorage.setItem('mb_wishlist', JSON.stringify(wishlist));
+    } catch (e) {
+      console.warn('Failed to save wishlist to storage:', e);
+    }
   }, [wishlist]);
 
   useEffect(() => {
-    localStorage.setItem('mb_orders', JSON.stringify(orders));
+    try {
+      safeStorage.setItem('mb_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.warn('Failed to save orders to storage:', e);
+    }
   }, [orders]);
 
-  // Cart operations
-  const addToCart = (product: Product, variantId?: string, quantity: number = 1) => {
-    const variant = variantId
-      ? product.variants.find((v) => v.id === variantId)
-      : product.variants.find((v) => v.is_default) || product.variants[0];
+  // Cart operations with comprehensive safety guards
+  const addToCart = (product: Product, variantId?: string, quantity: number = 1, openDrawer: boolean = false) => {
+    if (!product || !product.id) return;
 
-    setCart((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => item.product.id === product.id && item.variant?.id === variant?.id
-      );
+    try {
+      const safeProductVariants = Array.isArray(product.variants) && product.variants.length > 0
+        ? product.variants
+        : [
+            {
+              id: `var-default-${product.id}`,
+              product_id: product.id,
+              name_ar: 'الخيار الافتراضي',
+              name_en: 'Default',
+              sku: product.sku || 'MB-DEF',
+              price: typeof product.price === 'number' ? product.price : 0,
+              compare_at_price: product.compare_at_price,
+              availability_status: product.availability_status || 'available',
+              is_default: true,
+              sort_order: 1,
+            },
+          ];
 
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex].quantity += quantity;
-        return updated;
-      } else {
-        return [...prev, { product, variant, quantity }];
+      const selectedVariant = variantId
+        ? safeProductVariants.find((v) => v.id === variantId) || safeProductVariants[0]
+        : safeProductVariants.find((v) => v.is_default) || safeProductVariants[0];
+
+      const safeQuantity = typeof quantity === 'number' && quantity > 0 ? Math.floor(quantity) : 1;
+
+      // Safe lightweight product copy to avoid storage bloat
+      const cleanProduct: Product = {
+        id: product.id,
+        category_id: product.category_id,
+        brand_id: product.brand_id,
+        name_ar: product.name_ar || 'منتج ميني بازار',
+        name_en: product.name_en || '',
+        short_description_ar: product.short_description_ar || '',
+        short_description_en: product.short_description_en || '',
+        description_ar: product.description_ar || '',
+        description_en: product.description_en || '',
+        slug: product.slug || product.id,
+        sku: product.sku || 'MB-ITEM',
+        price: typeof product.price === 'number' ? product.price : 0,
+        compare_at_price: product.compare_at_price,
+        availability_status: product.availability_status || 'available',
+        is_featured: Boolean(product.is_featured),
+        is_new: Boolean(product.is_new),
+        is_best_seller: Boolean(product.is_best_seller),
+        is_active: product.is_active ?? true,
+        sort_order: product.sort_order || 1,
+        rating: product.rating || 5,
+        reviews_count: product.reviews_count || 1,
+        images: Array.isArray(product.images) && product.images.length > 0
+          ? [product.images[0]]
+          : [
+              {
+                id: `def-img-${product.id}`,
+                product_id: product.id,
+                path: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80',
+                alt_text_ar: product.name_ar || 'منتج',
+                alt_text_en: product.name_en || 'Product',
+                sort_order: 1,
+                is_primary: true,
+              },
+            ],
+        variants: safeProductVariants,
+      };
+
+      const cleanVariant = selectedVariant
+        ? {
+            ...selectedVariant,
+            price: typeof selectedVariant.price === 'number' ? selectedVariant.price : cleanProduct.price,
+            name_ar: selectedVariant.name_ar || 'الخيار الافتراضي',
+          }
+        : undefined;
+
+      setCart((prev) => {
+        const safePrev = Array.isArray(prev)
+          ? prev.filter((item) => Boolean(item && item.product && item.product.id))
+          : [];
+
+        const existingIndex = safePrev.findIndex(
+          (item) =>
+            item.product.id === cleanProduct.id &&
+            (item.variant?.id ?? 'default') === (cleanVariant?.id ?? 'default')
+        );
+
+        if (existingIndex > -1) {
+          const updated = [...safePrev];
+          const currentQty = typeof updated[existingIndex].quantity === 'number' ? updated[existingIndex].quantity : 1;
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            product: cleanProduct,
+            variant: cleanVariant,
+            quantity: currentQty + safeQuantity,
+          };
+          return updated;
+        } else {
+          return [...safePrev, { product: cleanProduct, variant: cleanVariant, quantity: safeQuantity }];
+        }
+      });
+
+      // Show floating luxury feedback toast
+      setLastAddedNotification({
+        product: cleanProduct,
+        variant: cleanVariant,
+        quantity: safeQuantity,
+      });
+
+      // Only open cart drawer if explicitly requested (e.g. from modal or checkout CTA)
+      if (openDrawer) {
+        setIsCartOpen(true);
       }
-    });
-
-    setIsCartOpen(true);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+    }
   };
 
   const updateCartQuantity = (productId: string, variantId: string | undefined, quantity: number) => {
+    if (!productId) return;
     if (quantity <= 0) {
       removeFromCart(productId, variantId);
       return;
     }
     setCart((prev) =>
-      prev.map((item) => {
-        if (item.product.id === productId && item.variant?.id === variantId) {
-          return { ...item, quantity };
-        }
-        return item;
-      })
+      (Array.isArray(prev) ? prev : [])
+        .filter((item) => Boolean(item && item.product && item.product.id))
+        .map((item) => {
+          if (
+            item.product.id === productId &&
+            (item.variant?.id ?? 'default') === (variantId ?? 'default')
+          ) {
+            return { ...item, quantity };
+          }
+          return item;
+        })
     );
   };
 
   const removeFromCart = (productId: string, variantId?: string) => {
+    if (!productId) return;
     setCart((prev) =>
-      prev.filter((item) => !(item.product.id === productId && item.variant?.id === variantId))
+      (Array.isArray(prev) ? prev : [])
+        .filter((item) => Boolean(item && item.product && item.product.id))
+        .filter(
+          (item) =>
+            !(
+              item.product.id === productId &&
+              (item.variant?.id ?? 'default') === (variantId ?? 'default')
+            )
+        )
     );
   };
 
@@ -380,12 +588,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCart([]);
   };
 
-  const cartSubtotal = cart.reduce((acc, item) => {
-    const price = item.variant?.price ?? item.product.price;
-    return acc + price * item.quantity;
-  }, 0);
+  const cartSubtotal = Array.isArray(cart)
+    ? cart.reduce((acc, item) => {
+        if (!item || !item.product) return acc;
+        const price =
+          typeof item.variant?.price === 'number'
+            ? item.variant.price
+            : typeof item.product.price === 'number'
+            ? item.product.price
+            : 0;
+        const qty = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+        return acc + price * qty;
+      }, 0)
+    : 0;
 
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const cartCount = Array.isArray(cart)
+    ? cart.reduce((acc, item) => {
+        if (!item || !item.product) return acc;
+        const qty = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
+        return acc + qty;
+      }, 0)
+    : 0;
 
   // Wishlist
   const toggleWishlist = (productId: string) => {
@@ -405,6 +628,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     deliveryMethodId: string;
     paymentMethodId: string;
     customerNotes?: string;
+    bankTransferReceipt?: string;
+    bankTransferConfirmed?: boolean;
   }): Promise<Order> => {
     // Re-verify prices and stock from current catalog state
     const deliveryMethod =
@@ -460,6 +685,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       customer_notes: orderData.customerNotes,
       source: 'web',
       placed_at: new Date().toISOString(),
+      bank_transfer_receipt: orderData.bankTransferReceipt,
+      bank_transfer_confirmed: Boolean(orderData.bankTransferConfirmed),
+      bank_transfer_verified: false,
       items: orderItems,
       logs: [
         {
@@ -497,6 +725,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return {
             ...ord,
             status: newStatus,
+            logs: [newLog, ...ord.logs],
+          };
+        }
+        return ord;
+      })
+    );
+  };
+
+  const verifyBankTransferReceipt = (orderId: string, verified: boolean, notes?: string) => {
+    setOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id === orderId) {
+          const newLog = {
+            id: `log-${Date.now()}`,
+            order_id: orderId,
+            from_status: ord.status,
+            to_status: verified && ord.status === 'new' ? ('confirmed' as OrderStatus) : ord.status,
+            note: verified
+              ? `تم التحقق والمطابقة مع البنك بنجاح${notes ? ` (ملاحظة: ${notes})` : ''}`
+              : `تم إلغاء تأكيد مطابقة الحوالة البنكية${notes ? ` (ملاحظة: ${notes})` : ''}`,
+            changed_by: 'المدير المالي (لوحة التحكم)',
+            created_at: new Date().toISOString(),
+          };
+          return {
+            ...ord,
+            bank_transfer_verified: verified,
+            bank_transfer_verified_at: verified ? new Date().toISOString() : undefined,
+            bank_transfer_notes: notes ?? ord.bank_transfer_notes,
+            status: verified && ord.status === 'new' ? 'confirmed' : ord.status,
             logs: [newLog, ...ord.logs],
           };
         }
@@ -564,9 +821,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const publishCustomization = () => {
-    localStorage.setItem('mb_hero_slides', JSON.stringify(heroSlides));
-    localStorage.setItem('mb_store_settings', JSON.stringify(storeSettings));
-    localStorage.setItem('mb_theme_settings', JSON.stringify(themeSettings));
+    safeStorage.setItem('mb_hero_slides', JSON.stringify(heroSlides));
+    safeStorage.setItem('mb_store_settings', JSON.stringify(storeSettings));
+    safeStorage.setItem('mb_theme_settings', JSON.stringify(themeSettings));
     setHasUnpublishedChanges(false);
   };
 
@@ -574,9 +831,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setHeroSlides(initialHeroSlides);
     setStoreSettings(initialStoreSettings);
     setThemeSettings(initialThemeSettings);
-    localStorage.removeItem('mb_hero_slides');
-    localStorage.removeItem('mb_store_settings');
-    localStorage.removeItem('mb_theme_settings');
+    safeStorage.removeItem('mb_hero_slides');
+    safeStorage.removeItem('mb_store_settings');
+    safeStorage.removeItem('mb_theme_settings');
     setHasUnpublishedChanges(false);
   };
 
@@ -591,7 +848,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else {
         updated = [productToSave, ...prev];
       }
-      localStorage.setItem('mb_products', JSON.stringify(updated));
+      safeStorage.setItem('mb_products', JSON.stringify(updated));
       return updated;
     });
   };
@@ -599,7 +856,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteProduct = (productId: string) => {
     setProducts((prev) => {
       const updated = prev.filter((p) => p.id !== productId);
-      localStorage.setItem('mb_products', JSON.stringify(updated));
+      safeStorage.setItem('mb_products', JSON.stringify(updated));
       return updated;
     });
   };
@@ -615,7 +872,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else {
         updated = [...prev, categoryToSave];
       }
-      localStorage.setItem('mb_categories', JSON.stringify(updated));
+      safeStorage.setItem('mb_categories', JSON.stringify(updated));
       return updated;
     });
   };
@@ -623,7 +880,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteCategory = (categoryId: string) => {
     setCategories((prev) => {
       const updated = prev.filter((c) => c.id !== categoryId);
-      localStorage.setItem('mb_categories', JSON.stringify(updated));
+      safeStorage.setItem('mb_categories', JSON.stringify(updated));
       return updated;
     });
   };
@@ -639,7 +896,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } else {
         updated = [...prev, brandToSave];
       }
-      localStorage.setItem('mb_brands', JSON.stringify(updated));
+      safeStorage.setItem('mb_brands', JSON.stringify(updated));
       return updated;
     });
   };
@@ -647,7 +904,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteBrand = (brandId: string) => {
     setBrands((prev) => {
       const updated = prev.filter((b) => b.id !== brandId);
-      localStorage.setItem('mb_brands', JSON.stringify(updated));
+      safeStorage.setItem('mb_brands', JSON.stringify(updated));
       return updated;
     });
   };
@@ -687,11 +944,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       if (rememberMe) {
-        localStorage.setItem('mb_admin_auth_session', sessionData);
-        sessionStorage.removeItem('mb_admin_auth_session');
+        safeStorage.setItem('mb_admin_auth_session', sessionData);
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('mb_admin_auth_session');
       } else {
-        sessionStorage.setItem('mb_admin_auth_session', sessionData);
-        localStorage.removeItem('mb_admin_auth_session');
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('mb_admin_auth_session', sessionData);
+        safeStorage.removeItem('mb_admin_auth_session');
       }
       return { success: true };
     }
@@ -704,8 +961,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const logoutAdmin = () => {
     setIsAdminAuthenticated(false);
-    localStorage.removeItem('mb_admin_auth_session');
-    sessionStorage.removeItem('mb_admin_auth_session');
+    safeStorage.removeItem('mb_admin_auth_session');
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('mb_admin_auth_session');
   };
 
   const recoverAdminPassword = (params: {
@@ -774,9 +1031,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     delete updated.recovery_pin;
 
     setAdminCredentials(updated);
-    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
     setIsAdminAuthenticated(true);
-    localStorage.setItem(
+    safeStorage.setItem(
       'mb_admin_auth_session',
       JSON.stringify({
         isAuthenticated: true,
@@ -806,16 +1063,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     delete updated.recovery_pin;
 
     setAdminCredentials(updated);
-    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
 
     // Update active session username
-    const currentSession = localStorage.getItem('mb_admin_auth_session') || sessionStorage.getItem('mb_admin_auth_session');
+    const currentSession = safeStorage.getItem('mb_admin_auth_session') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('mb_admin_auth_session') : null);
     if (currentSession) {
       const parsed = JSON.parse(currentSession);
       const newSession = JSON.stringify({ ...parsed, username: trimmed });
-      if (localStorage.getItem('mb_admin_auth_session')) {
-        localStorage.setItem('mb_admin_auth_session', newSession);
-      } else {
+      if (safeStorage.getItem('mb_admin_auth_session')) {
+        safeStorage.setItem('mb_admin_auth_session', newSession);
+      } else if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem('mb_admin_auth_session', newSession);
       }
     }
@@ -852,7 +1109,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     delete updated.recovery_pin;
 
     setAdminCredentials(updated);
-    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
 
     return { success: true };
   };
@@ -894,14 +1151,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     delete updated.recovery_pin;
 
     setAdminCredentials(updated);
-    localStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
+    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
 
     return { success: true };
   };
 
   const resetAdminCredentialsToDefault = () => {
     setAdminCredentials(initialAdminCredentials);
-    localStorage.setItem('mb_admin_credentials', JSON.stringify(initialAdminCredentials));
+    safeStorage.setItem('mb_admin_credentials', JSON.stringify(initialAdminCredentials));
   };
 
   return (
@@ -938,6 +1195,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         cartCount,
         isCartOpen,
         setIsCartOpen,
+        lastAddedNotification,
+        clearLastAddedNotification,
 
         wishlist,
         toggleWishlist,
@@ -950,6 +1209,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         currentOrder,
         createOrder,
         updateOrderStatus,
+        verifyBankTransferReceipt,
         addManualOrder,
 
         heroSlides,

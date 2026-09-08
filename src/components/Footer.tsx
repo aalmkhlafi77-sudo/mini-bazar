@@ -55,6 +55,28 @@ export const Footer: React.FC = () => {
       ? storeSettings.footer_payment_methods
       : ['مدى', 'Apple Pay', 'Visa', 'Mastercard', 'تحويل بنكي'];
 
+  // Dynamic footer styling from storeSettings
+  const footerBgColor = storeSettings.footer_bg_color || '#2F2B28';
+  const footerTextColor = storeSettings.footer_text_color || '#C4B7AC';
+  const footerHeadingColor = storeSettings.footer_heading_color || '#E7D4BC';
+  const footerLinkColor = storeSettings.footer_link_color || '#E7D4BC';
+  const footerBorderColor = storeSettings.footer_border_color || '#4A3E37';
+  const footerBadgeBg = storeSettings.footer_badge_bg || '#3D3733';
+  const footerBadgeColor = storeSettings.footer_badge_color || '#E7D4BC';
+
+  const footerFontSizeClass =
+    storeSettings.footer_font_size === 'sm'
+      ? 'text-sm'
+      : storeSettings.footer_font_size === 'base'
+      ? 'text-base'
+      : 'text-xs';
+  const footerFontWeightClass =
+    storeSettings.footer_font_weight === 'medium'
+      ? 'font-medium'
+      : storeSettings.footer_font_weight === 'semibold'
+      ? 'font-semibold'
+      : 'font-normal';
+
   const handleLinkClick = (action: string) => {
     if (action === 'store') {
       setSelectedCategory(null);
@@ -73,23 +95,26 @@ export const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-[#2F2B28] text-[#E7D4BC] pt-14 pb-28 lg:pb-12 border-t border-[#4A3E37] text-right font-sans">
+    <footer
+      style={{ backgroundColor: footerBgColor, color: footerTextColor, borderColor: footerBorderColor }}
+      className={`pt-14 pb-28 lg:pb-12 border-t text-right font-sans ${footerFontSizeClass} ${footerFontWeightClass} transition-colors duration-300`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-8">
         {/* Main Footer Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-10 border-b border-[#4A3E37]">
+        <div style={{ borderColor: footerBorderColor }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 pb-10 border-b">
           
           {/* Brand Info & Bio (5 Columns) */}
           <div className="lg:col-span-4 space-y-4">
             <MiniBazaarLogo variant="full" inverted={true} />
 
-            <p className="text-xs sm:text-sm text-[#C4B7AC] leading-relaxed pt-2">
+            <p style={{ color: footerTextColor }} className="text-xs sm:text-sm leading-relaxed pt-2 opacity-90">
               {footerBio}
             </p>
 
             {/* Social Media Links Icons */}
             {activeSocials.length > 0 && (
               <div className="pt-2">
-                <span className="block text-[11px] text-[#8A7465] mb-2 font-medium">
+                <span style={{ color: footerHeadingColor }} className="block text-[11px] mb-2 font-medium opacity-80">
                   تابعوا منصاتنا الاجتماعية:
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
@@ -101,7 +126,8 @@ export const Footer: React.FC = () => {
                       rel="noreferrer"
                       title={social.title_ar}
                       aria-label={social.title_ar}
-                      className="w-8 h-8 rounded-full bg-[#3D3733] hover:bg-[#C6A36A] hover:text-[#2F2B28] text-[#E7D4BC] border border-[#5A4538] flex items-center justify-center transition-all duration-200"
+                      style={{ backgroundColor: footerBadgeBg, color: footerBadgeColor, borderColor: footerBorderColor }}
+                      className="w-8 h-8 rounded-full hover:bg-[#C6A36A] hover:text-[#2F2B28] border flex items-center justify-center transition-all duration-200"
                     >
                       <SocialIcon platform={social.platform} className="w-4 h-4" />
                     </a>
@@ -112,7 +138,7 @@ export const Footer: React.FC = () => {
 
             {/* Business Verification */}
             {verificationText && (
-              <div className="flex items-center gap-2 text-[11px] text-[#A6998E] pt-2">
+              <div style={{ color: footerTextColor }} className="flex items-center gap-2 text-[11px] pt-2 opacity-85">
                 <ShieldCheck className="w-4 h-4 text-[#C6A36A] shrink-0" />
                 <span>{verificationText}</span>
               </div>
@@ -121,11 +147,11 @@ export const Footer: React.FC = () => {
 
           {/* Section 1: تواصلي معنا (Contact Info) - 3 Columns */}
           <div className="lg:col-span-3 space-y-4">
-            <h3 className="text-sm font-bold text-[#F5E9D8] font-heading tracking-wide border-b border-[#4A3E37] pb-2 inline-block">
+            <h3 style={{ color: footerHeadingColor, borderColor: footerBorderColor }} className="text-sm font-bold font-heading tracking-wide border-b pb-2 inline-block">
               تواصلي معنا
             </h3>
 
-            <div className="space-y-3 text-xs text-[#C4B7AC]">
+            <div className="space-y-3 text-xs" style={{ color: footerTextColor }}>
               {/* WhatsApp Link */}
               <a
                 href={`https://wa.me/${storeSettings.whatsapp_number.replace(/\D/g, '')}`}
@@ -135,7 +161,7 @@ export const Footer: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   <MessageCircle className="w-4 h-4 text-[#25D366] shrink-0" />
-                  <span className="font-semibold text-xs text-[#F5E9D8]">واتساب خدمة العملاء:</span>
+                  <span className="font-semibold text-xs text-white">واتساب خدمة العملاء:</span>
                 </div>
                 <span dir="ltr" className="font-mono text-xs font-bold text-white">
                   {storeSettings.whatsapp_number}
@@ -144,15 +170,16 @@ export const Footer: React.FC = () => {
 
               {/* Phone Link */}
               {storeSettings.phone_number && (
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#3D3733]/60 border border-[#4A3E37]">
+                <div style={{ backgroundColor: footerBadgeBg, borderColor: footerBorderColor }} className="flex items-center justify-between p-2 rounded-lg border">
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-[#C6A36A] shrink-0" />
-                    <span className="text-[#8A7465]">رقم الاتصال:</span>
+                    <span className="opacity-75">رقم الاتصال:</span>
                   </div>
                   <a
                     href={`tel:${storeSettings.phone_number}`}
                     dir="ltr"
-                    className="hover:text-white font-mono text-xs font-medium text-[#E7D4BC]"
+                    style={{ color: footerLinkColor }}
+                    className="hover:underline font-mono text-xs font-medium"
                   >
                     {storeSettings.phone_number}
                   </a>
@@ -161,15 +188,16 @@ export const Footer: React.FC = () => {
 
               {/* Email Link */}
               {storeSettings.support_email && (
-                <div className="flex items-center justify-between p-2 rounded-lg bg-[#3D3733]/60 border border-[#4A3E37]">
+                <div style={{ backgroundColor: footerBadgeBg, borderColor: footerBorderColor }} className="flex items-center justify-between p-2 rounded-lg border">
                   <div className="flex items-center gap-2">
                     <Mail className="w-3.5 h-3.5 text-[#C6A36A] shrink-0" />
-                    <span className="text-[#8A7465]">البريد:</span>
+                    <span className="opacity-75">البريد:</span>
                   </div>
                   <a
                     href={`mailto:${storeSettings.support_email}`}
                     dir="ltr"
-                    className="hover:text-white font-mono text-xs text-[#E7D4BC]"
+                    style={{ color: footerLinkColor }}
+                    className="hover:underline font-mono text-xs"
                   >
                     {storeSettings.support_email}
                   </a>
@@ -180,8 +208,8 @@ export const Footer: React.FC = () => {
               {storeSettings.boutique_address_ar && (
                 <div className="flex items-start gap-2 pt-1 text-[11px]">
                   <MapPin className="w-3.5 h-3.5 text-[#C6A36A] shrink-0 mt-0.5" />
-                  <span className="text-[#8A7465] shrink-0">العنوان:</span>
-                  <span className="text-[#E7D4BC] leading-relaxed">
+                  <span className="opacity-75 shrink-0">العنوان:</span>
+                  <span style={{ color: footerTextColor }} className="leading-relaxed font-medium">
                     {storeSettings.boutique_address_ar}
                   </span>
                 </div>
@@ -189,7 +217,7 @@ export const Footer: React.FC = () => {
 
               {/* Working Hours */}
               {storeSettings.service_hours_ar && (
-                <div className="flex items-center gap-2 text-[11px] text-[#A6998E]">
+                <div style={{ color: footerTextColor }} className="flex items-center gap-2 text-[11px] opacity-80">
                   <Clock className="w-3.5 h-3.5 text-[#C6A36A] shrink-0" />
                   <span>{storeSettings.service_hours_ar}</span>
                 </div>
@@ -199,14 +227,15 @@ export const Footer: React.FC = () => {
 
           {/* Section 2: روابط سريعة (Navigation Links) - 2 Columns */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-sm font-bold text-[#F5E9D8] font-heading tracking-wide border-b border-[#4A3E37] pb-2 inline-block">
+            <h3 style={{ color: footerHeadingColor, borderColor: footerBorderColor }} className="text-sm font-bold font-heading tracking-wide border-b pb-2 inline-block">
               روابط
             </h3>
-            <ul className="space-y-2.5 text-xs text-[#C4B7AC]">
+            <ul className="space-y-2.5 text-xs">
               <li>
                 <button
                   onClick={() => handleLinkClick('store')}
-                  className="hover:text-[#C6A36A] transition-colors flex items-center gap-1.5"
+                  style={{ color: footerLinkColor }}
+                  className="hover:opacity-75 transition-opacity flex items-center gap-1.5"
                 >
                   <span>المتجر</span>
                 </button>
@@ -214,7 +243,8 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   onClick={() => handleLinkClick('wishlist')}
-                  className="hover:text-[#C6A36A] transition-colors flex items-center gap-1.5"
+                  style={{ color: footerLinkColor }}
+                  className="hover:opacity-75 transition-opacity flex items-center gap-1.5"
                 >
                   <span>المفضلة</span>
                 </button>
@@ -222,7 +252,8 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   onClick={() => handleLinkClick('orders')}
-                  className="hover:text-[#C6A36A] transition-colors flex items-center gap-1.5"
+                  style={{ color: footerLinkColor }}
+                  className="hover:opacity-75 transition-opacity flex items-center gap-1.5"
                 >
                   <span>طلباتي</span>
                 </button>
@@ -230,7 +261,8 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   onClick={() => handleLinkClick('store')}
-                  className="hover:text-[#C6A36A] transition-colors flex items-center gap-1.5"
+                  style={{ color: footerLinkColor }}
+                  className="hover:opacity-75 transition-opacity flex items-center gap-1.5"
                 >
                   <span>السياسات وطرق الدفع</span>
                 </button>
@@ -248,10 +280,10 @@ export const Footer: React.FC = () => {
 
           {/* Section 3: تعهدات ميني بازار (Commitments) - 3 Columns */}
           <div className="lg:col-span-3 space-y-4">
-            <h3 className="text-sm font-bold text-[#F5E9D8] font-heading tracking-wide border-b border-[#4A3E37] pb-2 inline-block">
+            <h3 style={{ color: footerHeadingColor, borderColor: footerBorderColor }} className="text-sm font-bold font-heading tracking-wide border-b pb-2 inline-block">
               تعهدات ميني بازار
             </h3>
-            <div className="space-y-2.5 text-xs text-[#C4B7AC]">
+            <div className="space-y-2.5 text-xs" style={{ color: footerTextColor }}>
               {commitments.map((com) => (
                 <div key={com.id} className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#C6A36A] shrink-0 mt-0.5" />
@@ -267,11 +299,12 @@ export const Footer: React.FC = () => {
         <div className="pt-8 space-y-6">
           {/* Payment Badges Row */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs text-[#8A7465] ml-2">طرق الدفع المعتمدة:</span>
+            <span style={{ color: footerHeadingColor }} className="text-xs ml-2 opacity-80">طرق الدفع المعتمدة:</span>
             {paymentMethods.map((pm, idx) => (
               <span
                 key={idx}
-                className="px-3 py-1 rounded-lg bg-[#3D3733] text-[11px] font-bold text-[#E7D4BC] border border-[#4A3E37] shadow-xs"
+                style={{ backgroundColor: footerBadgeBg, color: footerBadgeColor, borderColor: footerBorderColor }}
+                className="px-3 py-1 rounded-lg text-[11px] font-bold border shadow-xs"
               >
                 {pm}
               </span>
@@ -279,14 +312,14 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Copyright & Designer Badge */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#A6998E] border-t border-[#4A3E37]/60 pt-6">
+          <div style={{ borderColor: footerBorderColor, color: footerTextColor }} className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs border-t pt-6 opacity-85">
             <p className="text-center sm:text-right">
               {storeSettings.footer_copyright_ar ||
                 `© ${new Date().getFullYear()} ${storeSettings.store_name_ar} — جميع الحقوق محفوظة.`}
             </p>
 
             {showDesignerCredit && (
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#3D3733] border border-[#5A4538] text-[#C6A36A] font-medium text-xs">
+              <div style={{ backgroundColor: footerBadgeBg, borderColor: footerBorderColor, color: '#C6A36A' }} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border font-medium text-xs">
                 <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
                 <span>{designerCredit}</span>
               </div>
@@ -295,7 +328,8 @@ export const Footer: React.FC = () => {
             <button
               onClick={scrollToTop}
               aria-label="العودة لأعلى الصفحة"
-              className="w-8 h-8 rounded-full bg-[#3D3733] hover:bg-[#4A3E37] text-[#C6A36A] flex items-center justify-center transition-colors"
+              style={{ backgroundColor: footerBadgeBg, borderColor: footerBorderColor, color: '#C6A36A' }}
+              className="w-8 h-8 rounded-full border flex items-center justify-center hover:opacity-80 transition-opacity"
               title="العودة للأعلى"
             >
               <ArrowUp className="w-4 h-4" />

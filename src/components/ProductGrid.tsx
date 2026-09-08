@@ -14,6 +14,7 @@ export const ProductGrid: React.FC = () => {
     categories,
     searchQuery,
     setSearchQuery,
+    storeSettings,
   } = useStore();
 
   const [filterType, setFilterType] = useState<'all' | 'best_seller' | 'new'>('all');
@@ -21,10 +22,38 @@ export const ProductGrid: React.FC = () => {
   const activeCategoryObj = categories.find((c) => c.id === selectedCategory);
   const activeBrandObj = brands.find((b) => b.id === selectedBrand);
 
+  const brandSettings = storeSettings?.brand_settings || {
+    display_mode: 'both',
+    logo_size: 'medium',
+    show_product_count: true,
+    show_on_product_card: true,
+    show_in_product_modal: true,
+    show_filter_bar: true,
+    filter_title_ar: 'تصفية بحسب العلامة التجارية (البراند):',
+  };
+
+  const displayMode = brandSettings.display_mode || 'both';
+  const logoSize = brandSettings.logo_size || 'medium';
+  const showProductCount = brandSettings.show_product_count !== false;
+  const showFilterBar = brandSettings.show_filter_bar !== false;
+
   // Active brands for filter chips
   const activeBrands = brands
     .filter((b) => b.is_active)
     .sort((a, b) => a.sort_order - b.sort_order);
+
+  // Logo dimension classes
+  const getLogoImgClass = () => {
+    switch (logoSize) {
+      case 'small':
+        return 'w-6 h-6 rounded-[8px]';
+      case 'large':
+        return 'w-11 h-11 rounded-[14px]';
+      case 'medium':
+      default:
+        return 'w-8 h-8 sm:w-9 sm:h-9 rounded-[10px]';
+    }
+  };
 
   // Filter products by active category, active brand, search query, and filter tag
   const filteredProducts = products.filter((p) => {
@@ -114,12 +143,12 @@ export const ProductGrid: React.FC = () => {
       </div>
 
       {/* Brand Filters Bar */}
-      {activeBrands.length > 0 && (
-        <div className="mb-8 p-3.5 bg-[#FBF8F3] rounded-[22px] border border-[#E7D4BC] shadow-2xs">
-          <div className="flex items-center justify-between gap-3 mb-2.5 px-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#6F584A]">
-              <Award className="w-4 h-4 text-[#C6A36A]" />
-              <span>تصفية بحسب العلامة التجارية (البراند):</span>
+      {showFilterBar && activeBrands.length > 0 && (
+        <div className="mb-8 p-4 bg-[#FBF8F3] rounded-[24px] border border-[#E7D4BC] shadow-2xs">
+          <div className="flex items-center justify-between gap-3 mb-3 px-1">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#6F584A]">
+              <Award className="w-4 h-4 sm:w-5 sm:h-5 text-[#C6A36A]" />
+              <span>{brandSettings.filter_title_ar || 'تصفية بحسب العلامة التجارية (البراند):'}</span>
             </div>
 
             {(selectedBrand || selectedCategory) && (
@@ -128,26 +157,29 @@ export const ProductGrid: React.FC = () => {
                   setSelectedBrand(null);
                   setSelectedCategory(null);
                 }}
-                className="text-[11px] text-[#B4574A] hover:underline flex items-center gap-1 font-semibold"
+                className="text-[11px] sm:text-xs text-[#B4574A] hover:underline flex items-center gap-1 font-semibold"
               >
-                <X className="w-3 h-3" />
-                <span>إلغاء جميع الفلاتر</span>
+                <X className="w-3.5 h-3.5" />
+                <span>إلغاء الفلاتر</span>
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-2 pt-0.5 scrollbar-thin">
+            {/* All Brands Button */}
             <button
               onClick={() => setSelectedBrand(null)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[12px] text-xs font-bold transition-all shrink-0 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-[14px] text-xs font-bold transition-all shrink-0 border ${
                 selectedBrand === null
-                  ? 'bg-[#2F2B28] text-white shadow-xs'
-                  : 'bg-white text-[#5F5751] hover:bg-[#F4ECE2] border border-[#E5D8C9]'
+                  ? 'bg-[#2F2B28] text-white border-[#2F2B28] shadow-sm'
+                  : 'bg-white text-[#5F5751] hover:bg-[#F4ECE2] border-[#E5D8C9]'
               }`}
             >
+              <span className="w-2 h-2 rounded-full bg-[#C6A36A]"></span>
               <span>كافة البراندات</span>
             </button>
 
+            {/* Individual Brand Buttons */}
             {activeBrands.map((brand) => {
               const isSelected = selectedBrand === brand.id;
               const brandProductCount = products.filter(
@@ -161,27 +193,64 @@ export const ProductGrid: React.FC = () => {
                 <button
                   key={brand.id}
                   onClick={() => setSelectedBrand(isSelected ? null : brand.id)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-[12px] text-xs font-semibold transition-all shrink-0 border ${
+                  title={`${brand.name_ar}${brand.name_en ? ` (${brand.name_en})` : ''} - ${brandProductCount} منتج`}
+                  className={`group relative flex items-center gap-2.5 transition-all shrink-0 border ${
+                    displayMode === 'logo_only'
+                      ? 'p-2 rounded-[16px]'
+                      : 'px-3.5 py-2 rounded-[14px]'
+                  } ${
                     isSelected
-                      ? 'bg-[#2F2B28] text-white border-[#2F2B28] shadow-xs'
-                      : 'bg-white text-[#2F2B28] hover:bg-[#F4ECE2] border-[#E5D8C9]'
+                      ? 'bg-[#2F2B28] text-white border-[#2F2B28] shadow-sm ring-2 ring-[#C6A36A]/40'
+                      : 'bg-white text-[#2F2B28] hover:bg-[#F4ECE2] border-[#E5D8C9] hover:border-[#C6A36A]/50'
                   }`}
                 >
-                  {brand.logo_path && (
-                    <img
-                      src={brand.logo_path}
-                      alt={brand.name_ar}
-                      className="w-4 h-4 rounded-full object-cover shrink-0"
-                    />
+                  {/* 1. Brand Logo (if in 'both' or 'logo_only' mode) */}
+                  {displayMode !== 'name_only' && (
+                    <div
+                      className={`relative shrink-0 overflow-hidden bg-white rounded-[10px] border flex items-center justify-center ${
+                        isSelected ? 'border-[#C6A36A] shadow-2xs' : 'border-[#E5D8C9]'
+                      } ${
+                        logoSize === 'large'
+                          ? 'w-11 h-11 sm:w-12 sm:h-12'
+                          : logoSize === 'small'
+                          ? 'w-6 h-6'
+                          : 'w-8 h-8 sm:w-9 sm:h-9'
+                      }`}
+                    >
+                      {brand.logo_path ? (
+                        <img
+                          src={brand.logo_path}
+                          alt={brand.name_ar}
+                          className="w-full h-full object-contain p-0.5"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="font-bold text-xs text-[#8A7465]">
+                          {brand.name_ar.charAt(0)}
+                        </span>
+                      )}
+                    </div>
                   )}
-                  <span>{brand.name_ar}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                      isSelected ? 'bg-[#C6A36A] text-[#2F2B28]' : 'bg-[#F4ECE2] text-[#6F584A]'
-                    }`}
-                  >
-                    {brandProductCount}
-                  </span>
+
+                  {/* 2. Brand Name (if in 'both' or 'name_only' mode) */}
+                  {displayMode !== 'logo_only' && (
+                    <span className="text-xs font-bold leading-none tracking-tight">
+                      {brand.name_ar}
+                    </span>
+                  )}
+
+                  {/* 3. Product Count Badge */}
+                  {showProductCount && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold leading-none shrink-0 ${
+                        isSelected
+                          ? 'bg-[#C6A36A] text-[#2F2B28]'
+                          : 'bg-[#F4ECE2] text-[#6F584A]'
+                      }`}
+                    >
+                      {brandProductCount}
+                    </span>
+                  )}
                 </button>
               );
             })}

@@ -99,6 +99,35 @@ export const Header: React.FC = () => {
     .filter((s) => s.is_active !== false && s.url)
     .sort((a, b) => a.sort_order - b.sort_order);
 
+  // Dynamic header styles from store settings
+  const headerBgColor = storeSettings.header_bg_color || '#FBF8F3';
+  const headerBorderColor = storeSettings.header_border_color || '#E5D8C9';
+  const headerAnnouncementBg = storeSettings.header_announcement_bg || '#2F2B28';
+  const headerAnnouncementTextColor = storeSettings.header_announcement_text_color || '#F5E9D8';
+
+  const navFontSizeClass =
+    storeSettings.header_nav_font_size === 'xs'
+      ? 'text-xs'
+      : storeSettings.header_nav_font_size === 'base'
+      ? 'text-[15px]'
+      : storeSettings.header_nav_font_size === 'lg'
+      ? 'text-base'
+      : 'text-sm';
+
+  const navFontWeightClass =
+    storeSettings.header_nav_font_weight === 'normal'
+      ? 'font-normal'
+      : storeSettings.header_nav_font_weight === 'semibold'
+      ? 'font-semibold'
+      : storeSettings.header_nav_font_weight === 'bold'
+      ? 'font-bold'
+      : 'font-medium';
+
+  const navTextColor = storeSettings.header_nav_text_color || '#5F5751';
+  const navActiveColor = storeSettings.header_nav_active_color || '#6F584A';
+  const badgeBg = storeSettings.header_nav_badge_bg || 'rgba(198, 163, 106, 0.2)';
+  const badgeColor = storeSettings.header_nav_badge_color || '#8A7465';
+
   const announcementPhrases =
     storeSettings.announcement_phrases && storeSettings.announcement_phrases.length > 0
       ? storeSettings.announcement_phrases
@@ -116,10 +145,23 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 w-full transition-all duration-300 font-sans">
       {/* 1. Ultra-Luxurious Announcement Ticker Bar (Always 1 Single Line with Smooth Infinite Continuous Marquee) */}
       {storeSettings.announcement_bar_visible && (
-        <div className="bg-[#2F2B28] border-b border-[#4A3E37] text-[#F5E9D8] py-2 px-3 text-[11px] sm:text-xs font-medium tracking-wide overflow-hidden select-none relative">
+        <div
+          style={{ backgroundColor: headerAnnouncementBg, color: headerAnnouncementTextColor }}
+          className="border-b border-[#4A3E37]/60 py-2 px-3 text-[11px] sm:text-xs font-medium tracking-wide overflow-hidden select-none relative transition-colors duration-300"
+        >
           {/* Subtle Side Gradients for high-end optical fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#2F2B28] to-transparent z-10 pointer-events-none" />
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#2F2B28] to-transparent z-10 pointer-events-none" />
+          <div
+            style={{
+              background: `linear-gradient(to left, ${headerAnnouncementBg}, transparent)`,
+            }}
+            className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
+          />
+          <div
+            style={{
+              background: `linear-gradient(to right, ${headerAnnouncementBg}, transparent)`,
+            }}
+            className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
+          />
 
           <div className="flex items-center overflow-hidden w-full whitespace-nowrap">
             {/* Animated Ticker Content - Loop repeated twice for seamless infinite scrolling */}
@@ -127,7 +169,7 @@ export const Header: React.FC = () => {
               <div className="flex items-center gap-6 px-4">
                 {announcementPhrases.map((phrase, idx) => (
                   <React.Fragment key={`p1-${idx}`}>
-                    <span className="flex items-center gap-1.5 text-[#F5E9D8]">
+                    <span className="flex items-center gap-1.5" style={{ color: headerAnnouncementTextColor }}>
                       <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
                       <span>{phrase}</span>
                     </span>
@@ -139,7 +181,7 @@ export const Header: React.FC = () => {
               <div className="flex items-center gap-6 px-4">
                 {announcementPhrases.map((phrase, idx) => (
                   <React.Fragment key={`p2-${idx}`}>
-                    <span className="flex items-center gap-1.5 text-[#F5E9D8]">
+                    <span className="flex items-center gap-1.5" style={{ color: headerAnnouncementTextColor }}>
                       <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
                       <span>{phrase}</span>
                     </span>
@@ -153,7 +195,10 @@ export const Header: React.FC = () => {
       )}
 
       {/* 2. Main Navigation Bar */}
-      <div className="bg-[#FBF8F3]/95 backdrop-blur-md border-b border-[#E5D8C9] px-3.5 sm:px-8 py-3 shadow-xs">
+      <div
+        style={{ backgroundColor: headerBgColor, borderColor: headerBorderColor }}
+        className="backdrop-blur-md border-b px-3.5 sm:px-8 py-3 shadow-xs transition-colors duration-300"
+      >
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Right Side: Burger Menu (Mobile) + Brand Logo */}
@@ -161,7 +206,7 @@ export const Header: React.FC = () => {
             {/* Mobile Menu Burger Trigger */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-[#2F2B28] hover:bg-[#F4ECE2] transition-colors focus:outline-none focus:ring-2 focus:ring-[#C6A36A]/30"
+              className="lg:hidden p-2 rounded-xl text-[#2F2B28] hover:bg-black/5 transition-colors focus:outline-none focus:ring-2 focus:ring-[#C6A36A]/30"
               aria-label="فتح قائمة الصفحات والتنقل"
               title="القائمة"
             >
@@ -193,17 +238,27 @@ export const Header: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => handleNavItemClick(item)}
-                  className={`relative text-sm font-medium transition-all pb-1 flex items-center gap-1.5 ${
-                    isActive
-                      ? 'text-[#6F584A] font-bold border-b-2 border-[#C6A36A]'
+                  style={{
+                    color: isActive
+                      ? navActiveColor
                       : item.type === 'offers'
-                      ? 'text-[#C6A36A] hover:text-[#AE8951] font-semibold'
-                      : 'text-[#5F5751] hover:text-[#6F584A]'
+                      ? '#C6A36A'
+                      : navTextColor,
+                    borderColor: isActive ? '#C6A36A' : 'transparent',
+                  }}
+                  className={`relative ${navFontSizeClass} ${navFontWeightClass} transition-all pb-1 flex items-center gap-1.5 hover:opacity-80 ${
+                    isActive ? 'border-b-2 font-bold' : ''
                   }`}
                 >
                   <span>{item.title_ar}</span>
                   {item.badge && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#C6A36A]/20 text-[#8A7465] border border-[#C6A36A]/40">
+                    <span
+                      style={{
+                        backgroundColor: badgeBg,
+                        color: badgeColor,
+                      }}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-[#C6A36A]/40"
+                    >
                       {item.badge}
                     </span>
                   )}

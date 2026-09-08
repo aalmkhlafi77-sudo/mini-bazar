@@ -19,43 +19,53 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     storeSettings,
   } = useStore();
 
+  const safeVariants = Array.isArray(product?.variants) && product.variants.length > 0 ? product.variants : [];
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
-    product.variants.find((v) => v.is_default)?.id || product.variants[0]?.id || ''
+    safeVariants.find((v) => v.is_default)?.id || safeVariants[0]?.id || ''
   );
   const [justAdded, setJustAdded] = useState(false);
 
   const activeVariant: ProductVariant | undefined =
-    product.variants.find((v) => v.id === selectedVariantId) || product.variants[0];
+    safeVariants.find((v) => v.id === selectedVariantId) || safeVariants[0];
 
-  const isFavorited = isInWishlist(product.id);
-  const category = categories.find((c) => c.id === product.category_id);
-  const brand = brands.find((b) => b.id === product.brand_id);
-  const isAvailable = (activeVariant?.availability_status ?? product.availability_status) === 'available';
+  const isFavorited = product?.id ? isInWishlist(product.id) : false;
+  const category = categories.find((c) => c.id === product?.category_id);
+  const brand = brands.find((b) => b.id === product?.brand_id);
+  const isAvailable = (activeVariant?.availability_status ?? product?.availability_status) === 'available';
 
-  const activePrice = activeVariant?.price ?? product.price;
-  const activeComparePrice = activeVariant?.compare_at_price ?? product.compare_at_price;
+  const activePrice = activeVariant?.price ?? product?.price ?? 0;
+  const activeComparePrice = activeVariant?.compare_at_price ?? product?.compare_at_price;
 
-  // Displayed image: prefer chosen variant image, fallback to primary product image
-  const displayImage = activeVariant?.image_path || product.images[0]?.path;
+  // Displayed image: prefer chosen variant image, fallback to primary product image or placeholder
+  const displayImage =
+    activeVariant?.image_path ||
+    (Array.isArray(product?.images) && product.images[0]?.path) ||
+    'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80';
 
   const handleWhatsAppInquiry = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const phone = storeSettings.whatsapp_number.replace(/\D/g, '');
+    const phone = (storeSettings?.whatsapp_number || '+966500000000').replace(/\D/g, '');
     const message = encodeURIComponent(
-      `مرحباً ميني بازار، أود الاستفسار عن توفر منتج: ${product.name_ar} (الخيار: ${activeVariant?.name_ar || ''})`
+      `مرحباً ميني بازار، أود الاستفسار عن توفر منتج: ${product?.name_ar || ''} (الخيار: ${activeVariant?.name_ar || ''})`
     );
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   };
 
   const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (!isAvailable) return;
-    addToCart(product, activeVariant?.id, 1);
-    setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 1200);
+    if (!product || !isAvailable) return;
+    try {
+      addToCart(product, activeVariant?.id, 1, false);
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 2000);
+    } catch (err) {
+      console.error('Error adding to cart from ProductCard:', err);
+    }
   };
 
   const handleVariantSelect = (e: React.MouseEvent, variantId: string) => {
+    e.preventDefault();
     e.stopPropagation();
     setSelectedVariantId(variantId);
   };
@@ -83,12 +93,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Badges Top Right (RTL) */}
         <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10">
-          {product.is_new && (
+          {product?.is_new && (
             <span className="bg-[#2F2B28] text-[#F5E9D8] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs border border-[#4A3E37]">
               وصل حديثاً
             </span>
           )}
-          {product.is_best_seller && (
+          {product?.is_best_seller && (
             <span className="bg-[#C6A36A] text-[#2F2B28] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs">
               الأكثر طلباً
             </span>
@@ -104,7 +114,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            toggleWishlist(product.id);
+            if (product?.id) toggleWishlist(product.id);
           }}
           aria-label={isFavorited ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
           className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#6F584A] shadow-sm flex items-center justify-center transition-transform active:scale-90 z-10"
@@ -117,7 +127,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </button>
 
         {/* Selected Variant pill tag over image */}
-        {activeVariant && product.variants.length > 1 && (
+        {activeVariant && safeVariants.length > 1 && (
           <div className="absolute bottom-2.5 right-2.5 bg-black/60 backdrop-blur-2xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full z-10 flex items-center gap-1">
             {activeVariant.color_code && (
               <span
@@ -125,7 +135,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 style={{ backgroundColor: activeVariant.color_code }}
               />
             )}
-            <span>{activeVariant.name_ar}</span>
+            <span>{activeVariant.name_ar || activeVariant.name_en}</span>
           </div>
         )}
 
@@ -144,7 +154,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Category & Brand & Rating */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-1.5 overflow-hidden">
-            {brand && (
+            {brand && storeSettings?.brand_settings?.show_on_product_card !== false && (
               <span
                 onClick={(e) => {
                   e.stopPropagation();
@@ -152,10 +162,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   const el = document.getElementById('products-section');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="text-[10px] font-bold text-[#6F584A] bg-[#F4ECE2] hover:bg-[#E7D4BC] px-2 py-0.5 rounded-[6px] border border-[#E7D4BC] truncate transition-colors"
-                title={`تصفية حسب براند ${brand.name_ar}`}
+                className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#6F584A] bg-[#F4ECE2] hover:bg-[#E7D4BC] px-2 py-0.5 rounded-[8px] border border-[#E7D4BC] truncate transition-colors cursor-pointer shrink-0"
+                title={`تصفية حسب براند ${brand.name_ar}${brand.name_en ? ` (${brand.name_en})` : ''}`}
               >
-                {brand.name_ar}
+                {/* Logo in 'both' or 'logo_only' */}
+                {storeSettings?.brand_settings?.display_mode !== 'name_only' && brand.logo_path && (
+                  <img
+                    src={brand.logo_path}
+                    alt={brand.name_ar}
+                    className="w-4 h-4 rounded-full object-contain bg-white shrink-0 border border-[#E5D8C9]"
+                  />
+                )}
+                {/* Name in 'both' or 'name_only' */}
+                {storeSettings?.brand_settings?.display_mode !== 'logo_only' && (
+                  <span className="truncate">{brand.name_ar}</span>
+                )}
               </span>
             )}
             <span className="text-[11px] font-semibold text-[#C6A36A] uppercase tracking-wider truncate">
@@ -165,35 +186,36 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           <div className="flex items-center gap-1 text-[11px] text-[#8A7465] shrink-0">
             <Star className="w-3.5 h-3.5 fill-[#C6A36A] text-[#C6A36A]" />
-            <span className="font-bold text-[#2F2B28]">{product.rating.toFixed(1)}</span>
-            <span className="text-[#7C736D]">({product.reviews_count})</span>
+            <span className="font-bold text-[#2F2B28]">{(Number(product?.rating) || 5.0).toFixed(1)}</span>
+            <span className="text-[#7C736D]">({product?.reviews_count || 0})</span>
           </div>
         </div>
 
         {/* Product Name */}
         <h3 className="text-sm sm:text-base font-bold text-[#2F2B28] font-heading group-hover:text-[#6F584A] transition-colors line-clamp-2 min-h-[2.75rem] mb-1.5 leading-snug">
-          {product.name_ar}
+          {product?.name_ar || product?.name_en || 'منتج ميني بازار'}
         </h3>
 
         {/* Color Swatches Picker on the card: strictly colored circles without text */}
-        {product.variants.length > 1 && (
+        {safeVariants.length > 1 && (
           <div className="mb-2.5 flex items-center gap-2">
             <span className="text-[11px] text-[#8A7465] font-medium shrink-0">اللون:</span>
             <div className="flex items-center gap-1.5 flex-wrap">
-              {product.variants.map((v) => {
+              {safeVariants.map((v) => {
                 const isSelected = selectedVariantId === v.id;
+                const vName = v.name_ar || v.name_en || '';
                 // Determine color swatch: prefer color_code, or fallback to distinctive luxury tone
                 const swatchBg =
                   v.color_code ||
-                  (v.name_ar.includes('ذهب') || v.name_ar.includes('ذهبي')
+                  (vName.includes('ذهب') || vName.includes('ذهبي')
                     ? '#D4AF37'
-                    : v.name_ar.includes('روز')
+                    : vName.includes('روز')
                     ? '#B76E79'
-                    : v.name_ar.includes('أسود')
+                    : vName.includes('أسود')
                     ? '#222222'
-                    : v.name_ar.includes('عسلي')
+                    : vName.includes('عسلي')
                     ? '#C58F49'
-                    : v.name_ar.includes('بيج') || v.name_ar.includes('عاجي')
+                    : vName.includes('بيج') || vName.includes('عاجي')
                     ? '#E6D7C3'
                     : '#8A7465');
 
@@ -202,8 +224,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     key={v.id}
                     type="button"
                     onClick={(e) => handleVariantSelect(e, v.id)}
-                    title={`${v.name_ar} — ${v.price} ر.س`}
-                    aria-label={v.name_ar}
+                    title={`${vName} — ${v.price || activePrice} ر.س`}
+                    aria-label={vName}
                     className={`relative w-5 h-5 rounded-full transition-all duration-200 shrink-0 ${
                       isSelected
                         ? 'ring-2 ring-[#C6A36A] ring-offset-2 ring-offset-white scale-110 shadow-xs'
@@ -211,7 +233,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     }`}
                     style={{ backgroundColor: swatchBg }}
                   >
-                    <span className="sr-only">{v.name_ar}</span>
+                    <span className="sr-only">{vName}</span>
                     {/* Border to ensure lighter swatches are well-defined */}
                     <span className="absolute inset-0 rounded-full border border-black/20 pointer-events-none" />
                   </button>
@@ -220,7 +242,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
             {activeVariant && (
               <span className="text-[11px] text-[#5F5751] font-semibold truncate max-w-[120px]">
-                {activeVariant.name_ar}
+                {activeVariant.name_ar || activeVariant.name_en}
               </span>
             )}
           </div>
@@ -228,7 +250,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Short description */}
         <p className="text-xs text-[#7C736D] line-clamp-1 mb-2">
-          {product.short_description_ar}
+          {product?.short_description_ar || product?.description_ar || ''}
         </p>
 
         {/* Price Row */}
@@ -260,9 +282,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* 3. Bottom Action Button (Fixed Bottom - Unified identity #2F2B28 with exact text "أضف إلى السلة") */}
-        <div className="mt-3">
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
           {isAvailable ? (
             <button
+              type="button"
               onClick={handleAddToCartClick}
               className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-[14px] font-bold text-xs transition-all duration-200 shadow-2xs group/btn active:scale-98 border border-[#4A3E37] ${
                 justAdded

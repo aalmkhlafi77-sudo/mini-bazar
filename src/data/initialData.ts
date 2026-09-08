@@ -1,6 +1,7 @@
 import {
   AdminCredentials,
   Brand,
+  BrandSettings,
   Category,
   CategoryCarouselSettings,
   DeliveryMethod,
@@ -659,6 +660,17 @@ export const initialCategoryCarouselSettings: CategoryCarouselSettings = {
   title_ar: 'تصنيفات ميني بازار الفاخرة',
 };
 
+export const initialBrandSettings: BrandSettings = {
+  display_mode: 'both',
+  logo_size: 'medium',
+  show_product_count: true,
+  show_on_product_card: true,
+  show_in_product_modal: true,
+  show_filter_bar: true,
+  filter_title_ar: 'تصفية بحسب العلامة التجارية (البراند)',
+  badge_style: 'luxury',
+};
+
 export const initialStoreSettings: StoreSettings = {
   store_name_ar: 'ميني بازار',
   store_name_en: 'Mini Bazaar',
@@ -680,6 +692,9 @@ export const initialStoreSettings: StoreSettings = {
 
   // Category Continuous Carousel Settings
   category_carousel: initialCategoryCarouselSettings,
+
+  // Brand Display & Customization Settings
+  brand_settings: initialBrandSettings,
 
   // WhatsApp & Communication
   whatsapp_default_message: 'مرحباً بوتيك ميني بازار، أود الاستفسار عن المقتنيات الفاخرة والمساعدة في الطلب.',
@@ -834,6 +849,23 @@ export const initialStoreSettings: StoreSettings = {
     },
   ],
   footer_payment_methods: ['مدى', 'Apple Pay', 'Visa', 'Mastercard', 'تحويل بنكي'],
+
+  // Header Navigation Styling
+  header_bg_color: '#FBF8F3',
+  header_nav_font_size: 'sm',
+  header_nav_font_weight: 'medium',
+  header_nav_text_color: '#5F5751',
+  header_nav_active_color: '#6F584A',
+  header_nav_badge_bg: 'rgba(198, 163, 106, 0.2)',
+  header_nav_badge_color: '#8A7465',
+
+  // Footer Styling
+  footer_bg_color: '#2F2B28',
+  footer_text_color: '#C4B7AC',
+  footer_heading_color: '#E7D4BC',
+  footer_link_color: '#E7D4BC',
+  footer_font_size: 'xs',
+  footer_font_weight: 'normal',
 };
 
 export const initialThemeSettings: ThemeSettings = {

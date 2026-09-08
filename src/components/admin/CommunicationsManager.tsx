@@ -20,12 +20,12 @@ export const CommunicationsManager: React.FC = () => {
     whatsapp_default_message:
       storeSettings.whatsapp_default_message ||
       'مرحباً ميني بازار، أود الاستفسار عن المقتنيات المتوفرة والطلب.',
-    whatsapp_floating_badge_text:
-      storeSettings.whatsapp_floating_badge_text || 'متصلون لمساعدتك',
-    whatsapp_show_floating_badge:
-      storeSettings.whatsapp_show_floating_badge !== false,
-    whatsapp_hover_label:
-      storeSettings.whatsapp_hover_label || 'واتساب ميني بازار',
+    whatsapp_tooltip_badge_text:
+      storeSettings.whatsapp_tooltip_badge_text || 'متصلون لمساعدتك',
+    whatsapp_tooltip_enabled:
+      storeSettings.whatsapp_tooltip_enabled !== false,
+    whatsapp_button_hover_text:
+      storeSettings.whatsapp_button_hover_text || 'واتساب ميني بازار',
     phone_number: storeSettings.phone_number || '+966500000000',
     support_email: storeSettings.support_email || 'concierge@minibazaar.store',
     boutique_address_ar:
@@ -107,9 +107,9 @@ export const CommunicationsManager: React.FC = () => {
               </label>
               <input
                 type="text"
-                value={formData.whatsapp_hover_label}
+                value={formData.whatsapp_button_hover_text}
                 onChange={(e) =>
-                  setFormData({ ...formData, whatsapp_hover_label: e.target.value })
+                  setFormData({ ...formData, whatsapp_button_hover_text: e.target.value })
                 }
                 placeholder="مثال: تواصل مع خدمة العملاء"
                 className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px]"
@@ -140,11 +140,11 @@ export const CommunicationsManager: React.FC = () => {
               </label>
               <input
                 type="text"
-                value={formData.whatsapp_floating_badge_text}
+                value={formData.whatsapp_tooltip_badge_text}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    whatsapp_floating_badge_text: e.target.value,
+                    whatsapp_tooltip_badge_text: e.target.value,
                   })
                 }
                 placeholder="مثال: متصلون لمساعدتك"
@@ -156,17 +156,17 @@ export const CommunicationsManager: React.FC = () => {
               <input
                 type="checkbox"
                 id="showFloatingBadge"
-                checked={formData.whatsapp_show_floating_badge}
+                checked={formData.whatsapp_tooltip_enabled}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    whatsapp_show_floating_badge: e.target.checked,
+                    whatsapp_tooltip_enabled: e.target.checked,
                   })
                 }
                 className="w-4 h-4 accent-[#2F2B28]"
               />
               <label htmlFor="showFloatingBadge" className="font-semibold text-[#2F2B28]">
-                إظهار الشارة النصية الجانبية للزر العائم على الشاشات الكبيرة
+                إظهار الشارة النصية التفاعلية للزر العائم
               </label>
             </div>
           </div>
