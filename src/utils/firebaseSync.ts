@@ -66,11 +66,21 @@ export async function seedInitialFirestoreData() {
         batch.set(prodDoc, prod);
       }
 
-      // 4. Seed Global Settings & Slides
-      const settingsDoc = doc(db, 'store_settings', 'global');
-      batch.set(settingsDoc, {
+      // 4. Seed Global Settings & Slides (split into separate docs to stay under 1MB limit)
+      const generalDoc = doc(db, 'store_settings', 'general');
+      batch.set(generalDoc, {
         storeSettings: initialStoreSettings,
+        updated_at: new Date().toISOString(),
+      });
+
+      const themeDoc = doc(db, 'store_settings', 'theme');
+      batch.set(themeDoc, {
         themeSettings: initialThemeSettings,
+        updated_at: new Date().toISOString(),
+      });
+
+      const heroDoc = doc(db, 'store_settings', 'hero');
+      batch.set(heroDoc, {
         heroSlides: initialHeroSlides,
         updated_at: new Date().toISOString(),
       });
@@ -211,25 +221,68 @@ export function listenToStoreSettings(
   }) => void
 ) {
   try {
-    const settingsDocRef = doc(db, 'store_settings', 'global');
-    return onSnapshot(
-      settingsDocRef,
+    const generalRef = doc(db, 'store_settings', 'general');
+    const themeRef = doc(db, 'store_settings', 'theme');
+    const heroRef = doc(db, 'store_settings', 'hero');
+
+    let currentStore: StoreSettings | undefined;
+    let currentTheme: ThemeSettings | undefined;
+    let currentHero: HeroSlide[] | undefined;
+
+    const notify = () => {
+      callback({
+        storeSettings: currentStore,
+        themeSettings: currentTheme,
+        heroSlides: currentHero,
+      });
+    };
+
+    const unsubGeneral = onSnapshot(
+      generalRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          const data = docSnap.data();
-          callback({
-            storeSettings: data.storeSettings,
-            themeSettings: data.themeSettings,
-            heroSlides: data.heroSlides,
-          });
+          currentStore = docSnap.data().storeSettings;
+          notify();
         } else {
           seedInitialFirestoreData();
         }
       },
       (error) => {
-        console.warn('Store settings sync error:', error);
+        console.warn('General settings sync error:', error);
       }
     );
+
+    const unsubTheme = onSnapshot(
+      themeRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          currentTheme = docSnap.data().themeSettings;
+          notify();
+        }
+      },
+      (error) => {
+        console.warn('Theme settings sync error:', error);
+      }
+    );
+
+    const unsubHero = onSnapshot(
+      heroRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          currentHero = docSnap.data().heroSlides;
+          notify();
+        }
+      },
+      (error) => {
+        console.warn('Hero settings sync error:', error);
+      }
+    );
+
+    return () => {
+      unsubGeneral();
+      unsubTheme();
+      unsubHero();
+    };
   } catch (e) {
     console.warn('Failed to listen to store settings:', e);
     return () => {};
@@ -317,9 +370,9 @@ export async function updateOrderInCloud(orderId: string, updates: Partial<Order
 
 export async function saveHeroSlidesToCloud(heroSlides: HeroSlide[]) {
   try {
-    const settingsDoc = doc(db, 'store_settings', 'global');
+    const heroDoc = doc(db, 'store_settings', 'hero');
     await setDoc(
-      settingsDoc,
+      heroDoc,
       {
         heroSlides: JSON.parse(JSON.stringify(heroSlides)),
         updated_at: new Date().toISOString(),
@@ -333,9 +386,9 @@ export async function saveHeroSlidesToCloud(heroSlides: HeroSlide[]) {
 
 export async function saveStoreSettingsToCloud(storeSettings: Partial<StoreSettings>) {
   try {
-    const settingsDoc = doc(db, 'store_settings', 'global');
+    const generalDoc = doc(db, 'store_settings', 'general');
     await setDoc(
-      settingsDoc,
+      generalDoc,
       {
         storeSettings: JSON.parse(JSON.stringify(storeSettings)),
         updated_at: new Date().toISOString(),
@@ -349,9 +402,9 @@ export async function saveStoreSettingsToCloud(storeSettings: Partial<StoreSetti
 
 export async function saveThemeSettingsToCloud(themeSettings: Partial<ThemeSettings>) {
   try {
-    const settingsDoc = doc(db, 'store_settings', 'global');
+    const themeDoc = doc(db, 'store_settings', 'theme');
     await setDoc(
-      settingsDoc,
+      themeDoc,
       {
         themeSettings: JSON.parse(JSON.stringify(themeSettings)),
         updated_at: new Date().toISOString(),
@@ -369,17 +422,11 @@ export async function publishSettingsToCloud(
   heroSlides: HeroSlide[]
 ) {
   try {
-    const settingsDoc = doc(db, 'store_settings', 'global');
-    await setDoc(
-      settingsDoc,
-      {
-        storeSettings: JSON.parse(JSON.stringify(storeSettings)),
-        themeSettings: JSON.parse(JSON.stringify(themeSettings)),
-        heroSlides: JSON.parse(JSON.stringify(heroSlides)),
-        updated_at: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    await Promise.all([
+      setDoc(doc(db, 'store_settings', 'general'), { storeSettings: JSON.parse(JSON.stringify(storeSettings)), updated_at: new Date().toISOString() }, { merge: true }),
+      setDoc(doc(db, 'store_settings', 'theme'), { themeSettings: JSON.parse(JSON.stringify(themeSettings)), updated_at: new Date().toISOString() }, { merge: true }),
+      setDoc(doc(db, 'store_settings', 'hero'), { heroSlides: JSON.parse(JSON.stringify(heroSlides)), updated_at: new Date().toISOString() }, { merge: true }),
+    ]);
   } catch (error) {
     console.error('Failed to publish settings to Firestore:', error);
   }

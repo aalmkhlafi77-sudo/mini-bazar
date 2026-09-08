@@ -222,6 +222,7 @@ export interface HeroSlide {
   secondary_button_bg?: string;
   secondary_button_text_color?: string;
   pulse_animation?: boolean;
+  image_fit?: 'cover' | 'contain';
   is_visible: boolean;
   sort_order: number;
 }

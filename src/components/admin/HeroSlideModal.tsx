@@ -129,6 +129,19 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
               </div>
             </div>
 
+            {/* Image Display Fit Option */}
+            <div className="pt-2">
+              <label className="block font-semibold mb-1 text-xs text-[#2F2B28]">طريقة عرض الصورة (لتجنب القص وضمان ظهورها كاملة)</label>
+              <select
+                value={slide.image_fit || 'contain'}
+                onChange={(e) => setSlide({ ...slide, image_fit: e.target.value as 'cover' | 'contain' })}
+                className="w-full p-2.5 bg-white border border-[#D9C1A7] rounded-[10px] text-xs font-semibold text-[#2F2B28]"
+              >
+                <option value="contain">احتواء كامل بدون قص (Contain - يظهر كاملة بوضوح)</option>
+                <option value="cover">تمدد كامل يملأ المساحة (Cover)</option>
+              </select>
+            </div>
+
             {/* Overlay & Blur Controls */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#E5D8C9]">
               <div>

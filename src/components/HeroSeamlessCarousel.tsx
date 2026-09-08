@@ -157,7 +157,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
             <img
               src={fullBgImage}
               alt=""
-              className={`w-full h-full object-cover transform ${
+              className={`w-full h-full object-${slide.image_fit || 'cover'} transform ${
                 slide.background_blur ? 'filter blur-[8px]' : ''
               }`}
             />
@@ -387,11 +387,11 @@ export const HeroSeamlessCarousel: React.FC = () => {
 
                   {/* Visual Showcase Side (Left side in RTL) */}
                   <div className="lg:col-span-6 relative flex justify-center items-center">
-                    <div className="relative w-full max-w-[480px] aspect-4/3 sm:aspect-1/1 rounded-[28px] overflow-hidden shadow-2xl border-4 border-white">
+                    <div className="relative w-full max-w-[480px] aspect-4/3 sm:aspect-1/1 rounded-[28px] overflow-hidden shadow-2xl border-4 border-white bg-[#F4ECE2]/40 flex items-center justify-center p-2">
                       <img
                         src={slide.desktop_image}
                         alt={slide.title_ar}
-                        className="w-full h-full object-cover transform scale-105 hover:scale-100 transition-transform duration-700"
+                        className={`w-full h-full object-${slide.image_fit || 'contain'} transform hover:scale-105 transition-transform duration-700`}
                         loading="eager"
                       />
                       {/* Subtle luxury gradient vignette */}
