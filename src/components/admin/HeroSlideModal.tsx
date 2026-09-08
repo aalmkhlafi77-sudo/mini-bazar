@@ -113,7 +113,8 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
                   onChange={(url) => setSlide({ ...slide, desktop_image: url, mobile_image: url })}
                   label="صورة المنتج / البانر الأساسية"
                   aspectRatioHint="أبعاد مربعة 1:1 أو 4:3"
-                  maxDimension={1600}
+                  maxDimension={1200}
+                  quality={0.82}
                 />
               </div>
               <div>
@@ -122,7 +123,8 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
                   onChange={(url) => setSlide({ ...slide, background_image: url })}
                   label="صورة الخلفية العريضة بالحجم الكامل (16:9)"
                   aspectRatioHint="صورة عالية الدقة تغطي كامل الهيرو"
-                  maxDimension={1920}
+                  maxDimension={1400}
+                  quality={0.80}
                 />
               </div>
             </div>

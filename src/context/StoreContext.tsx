@@ -46,6 +46,9 @@ import {
   deleteBrandFromCloud,
   saveOrderToCloud,
   updateOrderInCloud,
+  saveHeroSlidesToCloud,
+  saveStoreSettingsToCloud,
+  saveThemeSettingsToCloud,
   publishSettingsToCloud,
   seedInitialFirestoreData,
 } from '../utils/firebaseSync';
@@ -903,17 +906,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Customization & Settings Management
   const updateHeroSlides = (newSlides: HeroSlide[]) => {
     setHeroSlides(newSlides);
-    setHasUnpublishedChanges(true);
+    safeStorage.setItem('mb_hero_slides', JSON.stringify(newSlides));
+    saveHeroSlidesToCloud(newSlides);
+    setHasUnpublishedChanges(false);
   };
 
   const updateStoreSettings = (newSettings: Partial<StoreSettings>) => {
-    setStoreSettings((prev) => ({ ...prev, ...newSettings }));
-    setHasUnpublishedChanges(true);
+    setStoreSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      safeStorage.setItem('mb_store_settings', JSON.stringify(updated));
+      saveStoreSettingsToCloud(updated);
+      return updated;
+    });
+    setHasUnpublishedChanges(false);
   };
 
   const updateThemeSettings = (newSettings: Partial<ThemeSettings>) => {
-    setThemeSettings((prev) => ({ ...prev, ...newSettings }));
-    setHasUnpublishedChanges(true);
+    setThemeSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      safeStorage.setItem('mb_theme_settings', JSON.stringify(updated));
+      saveThemeSettingsToCloud(updated);
+      return updated;
+    });
+    setHasUnpublishedChanges(false);
   };
 
   const publishCustomization = () => {

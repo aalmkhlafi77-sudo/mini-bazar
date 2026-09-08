@@ -315,6 +315,54 @@ export async function updateOrderInCloud(orderId: string, updates: Partial<Order
   }
 }
 
+export async function saveHeroSlidesToCloud(heroSlides: HeroSlide[]) {
+  try {
+    const settingsDoc = doc(db, 'store_settings', 'global');
+    await setDoc(
+      settingsDoc,
+      {
+        heroSlides: JSON.parse(JSON.stringify(heroSlides)),
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Failed to save hero slides to Firestore:', error);
+  }
+}
+
+export async function saveStoreSettingsToCloud(storeSettings: Partial<StoreSettings>) {
+  try {
+    const settingsDoc = doc(db, 'store_settings', 'global');
+    await setDoc(
+      settingsDoc,
+      {
+        storeSettings: JSON.parse(JSON.stringify(storeSettings)),
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Failed to save store settings to Firestore:', error);
+  }
+}
+
+export async function saveThemeSettingsToCloud(themeSettings: Partial<ThemeSettings>) {
+  try {
+    const settingsDoc = doc(db, 'store_settings', 'global');
+    await setDoc(
+      settingsDoc,
+      {
+        themeSettings: JSON.parse(JSON.stringify(themeSettings)),
+        updated_at: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Failed to save theme settings to Firestore:', error);
+  }
+}
+
 export async function publishSettingsToCloud(
   storeSettings: StoreSettings,
   themeSettings: ThemeSettings,
