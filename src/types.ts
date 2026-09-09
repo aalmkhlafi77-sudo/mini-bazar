@@ -81,6 +81,7 @@ export interface Product {
   sort_order: number;
   rating: number;
   reviews_count: number;
+  image_fit?: 'cover' | 'contain' | 'full_width';
   images: ProductImage[];
   variants: ProductVariant[];
 }
@@ -207,7 +208,7 @@ export interface HeroSlide {
   secondary_button_text?: string;
   secondary_button_url?: string;
   text_alignment: 'right' | 'center' | 'left';
-  layout_type?: 'split' | 'full_background' | 'centered';
+  layout_type?: 'split' | 'full_background' | 'full_width_banner' | 'centered';
   background_type: 'color' | 'image' | 'gradient';
   background_value: string;
   background_image?: string;
@@ -222,7 +223,12 @@ export interface HeroSlide {
   secondary_button_bg?: string;
   secondary_button_text_color?: string;
   pulse_animation?: boolean;
-  image_fit?: 'cover' | 'contain';
+  image_fit?: 'cover' | 'contain' | 'full_width';
+  image_position?: 'top' | 'center' | 'bottom';
+  desktop_height?: 'compact' | 'standard' | 'cinematic' | 'fullscreen';
+  particles_effect?: 'none' | 'golden_sparkles' | 'luxury_dust' | 'floating_stars' | 'ambient_glow';
+  particles_density?: 'low' | 'medium' | 'high';
+  particles_speed?: 'slow' | 'normal' | 'fast';
   is_visible: boolean;
   sort_order: number;
 }

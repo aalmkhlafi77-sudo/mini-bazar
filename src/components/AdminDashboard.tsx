@@ -1908,6 +1908,7 @@ ${order.discount_total ? `الخصم المطبق: -${order.discount_total} ر.�
                     background_type: 'color',
                     background_value: '#FBF8F3',
                     is_visible: true,
+                    image_fit: 'contain',
                     sort_order: heroSlides.length + 1,
                   });
                   setIsSlideModalOpen(true);

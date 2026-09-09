@@ -83,7 +83,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       }}
     >
       {/* 1. Image Container with Badges and Wishlist button */}
-      <div className="relative w-full aspect-4/3 sm:aspect-1/1 overflow-hidden bg-[#F7F1E8]">
+      <div className="relative w-full aspect-4/3 sm:aspect-1/1 overflow-hidden bg-[#F7F1E8] flex items-center justify-center">
         <img
           src={displayImage}
           alt={activeVariant?.name_ar || product.name_ar}

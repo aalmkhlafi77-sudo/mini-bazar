@@ -157,11 +157,15 @@ const ProductDetailModalDialog: React.FC<ProductDetailModalDialogProps> = ({
           {/* Images Gallery Column */}
           <div className="md:col-span-6 bg-[#FBF8F3] p-6 sm:p-8 flex flex-col items-center justify-between border-b md:border-b-0 md:border-l border-[#E5D8C9]">
             {/* Active Main Image */}
-            <div className="relative w-full aspect-1/1 rounded-[20px] overflow-hidden bg-white border border-[#E7D4BC] shadow-xs mb-4">
+            <div className={`relative w-full aspect-1/1 rounded-[20px] overflow-hidden bg-white border border-[#E7D4BC] shadow-xs mb-4 flex items-center justify-center ${
+              selectedProduct.image_fit === 'contain' ? 'p-3 sm:p-4' : ''
+            }`}>
               <img
                 src={currentDisplayImage}
                 alt={activeVariant?.name_ar || selectedProduct.name_ar}
-                className="w-full h-full object-cover transition-all duration-300"
+                className={`w-full h-full ${
+                  selectedProduct.image_fit === 'contain' ? 'object-contain' : 'object-cover'
+                } object-center transition-all duration-300`}
               />
               {!isAvailable && (
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center">

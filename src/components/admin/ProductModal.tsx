@@ -489,7 +489,65 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 label="رفع الصورة الرئيسية للمنتج من الجهاز مع معالجة الأبعاد تلقائياً"
                 aspectRatioHint="يفضل نسبة مربعة 1:1 بجودة عالية"
                 maxDimension={1000}
+                imageFit={formData.image_fit || 'cover'}
+                onImageFitChange={(fit) => setFormData({ ...formData, image_fit: fit })}
               />
+
+              {/* Product Image Fit Selector */}
+              <div className="pt-2">
+                <label className="block font-semibold mb-1.5 text-xs text-[#2F2B28]">
+                  طريقة تموضع وظهور صورة المنتج في بطاقات المتجر وصفحة التفاصيل:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, image_fit: 'cover' })}
+                    className={`p-3 rounded-[12px] border text-right transition-all flex items-start gap-2.5 ${
+                      (formData.image_fit || 'cover') === 'cover'
+                        ? 'border-[#2F2B28] bg-[#2F2B28] text-white shadow-sm'
+                        : 'border-[#D9C1A7] bg-white text-[#2F2B28] hover:border-[#6F584A]'
+                    }`}
+                  >
+                    <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center shrink-0 mt-0.5">
+                      {(formData.image_fit || 'cover') === 'cover' && (
+                        <div className="w-2 h-2 rounded-full bg-[#C6A36A]" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="font-bold block text-xs">عرض بكامل حاوية الصورة (Cover - الافتراضي)</span>
+                      <span className={`text-[11px] block mt-0.5 ${
+                        (formData.image_fit || 'cover') === 'cover' ? 'text-[#E7D4BC]' : 'text-[#7C736D]'
+                      }`}>
+                        تتمدد الصورة لتملأ كامل إطار بطاقة المنتج بدون حواف جانبية فارغة.
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, image_fit: 'contain' })}
+                    className={`p-3 rounded-[12px] border text-right transition-all flex items-start gap-2.5 ${
+                      formData.image_fit === 'contain'
+                        ? 'border-[#2F2B28] bg-[#2F2B28] text-white shadow-sm'
+                        : 'border-[#D9C1A7] bg-white text-[#2F2B28] hover:border-[#6F584A]'
+                    }`}
+                  >
+                    <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center shrink-0 mt-0.5">
+                      {formData.image_fit === 'contain' && (
+                        <div className="w-2 h-2 rounded-full bg-[#C6A36A]" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="font-bold block text-xs">احتواء كامل للمنتج (Contain)</span>
+                      <span className={`text-[11px] block mt-0.5 ${
+                        formData.image_fit === 'contain' ? 'text-[#E7D4BC]' : 'text-[#7C736D]'
+                      }`}>
+                        تظهر كامل أطراف وتفاصيل المنتج واضحة 100% داخل الإطار مع حواف ناعمة.
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

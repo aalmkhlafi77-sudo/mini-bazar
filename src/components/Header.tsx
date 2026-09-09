@@ -142,7 +142,7 @@ export const Header: React.FC = () => {
             ]);
 
   return (
-    <header className="sticky top-0 z-40 w-full transition-all duration-300 font-sans">
+    <header className="sticky top-0 z-40 w-full transition-all duration-300 font-sans bg-[#FBF8F3] shadow-xs">
       {/* 1. Ultra-Luxurious Announcement Ticker Bar (Always 1 Single Line with Smooth Infinite Continuous Marquee) */}
       {storeSettings.announcement_bar_visible && (
         <div

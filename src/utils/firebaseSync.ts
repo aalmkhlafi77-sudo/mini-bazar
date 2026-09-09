@@ -268,7 +268,7 @@ export function listenToStoreSettings(
     const unsubHero = onSnapshot(
       heroRef,
       (docSnap) => {
-        if (docSnap.exists()) {
+        if (docSnap.exists() && docSnap.data().heroSlides) {
           currentHero = docSnap.data().heroSlides;
           notify();
         }
@@ -278,10 +278,30 @@ export function listenToStoreSettings(
       }
     );
 
+    // Dedicated hero_slides collection listener (each slide is its own document, completely bypassing any 1MB document limit)
+    const unsubHeroCol = onSnapshot(
+      collection(db, 'hero_slides'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: HeroSlide[] = [];
+          snapshot.forEach((docSnap) => {
+            list.push(docSnap.data() as HeroSlide);
+          });
+          list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          currentHero = list;
+          notify();
+        }
+      },
+      (error) => {
+        console.warn('Hero slides collection sync error:', error);
+      }
+    );
+
     return () => {
       unsubGeneral();
       unsubTheme();
       unsubHero();
+      unsubHeroCol();
     };
   } catch (e) {
     console.warn('Failed to listen to store settings:', e);
@@ -370,15 +390,46 @@ export async function updateOrderInCloud(orderId: string, updates: Partial<Order
 
 export async function saveHeroSlidesToCloud(heroSlides: HeroSlide[]) {
   try {
-    const heroDoc = doc(db, 'store_settings', 'hero');
-    await setDoc(
-      heroDoc,
-      {
-        heroSlides: JSON.parse(JSON.stringify(heroSlides)),
-        updated_at: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    const cleanSlides: HeroSlide[] = JSON.parse(JSON.stringify(heroSlides));
+
+    // 1. Save each slide into its own document in 'hero_slides' collection (zero 1MB document limit risk)
+    const writePromises = cleanSlides.map((slide) => {
+      const slideDoc = doc(db, 'hero_slides', slide.id);
+      return setDoc(slideDoc, slide, { merge: true });
+    });
+    await Promise.all(writePromises);
+
+    // 2. Clean up removed slides from Firestore collection
+    try {
+      const snap = await getDocs(collection(db, 'hero_slides'));
+      const activeIds = new Set(heroSlides.map((s) => s.id));
+      const deletePromises: Promise<void>[] = [];
+      snap.forEach((docSnap) => {
+        if (!activeIds.has(docSnap.id)) {
+          deletePromises.push(deleteDoc(docSnap.ref));
+        }
+      });
+      if (deletePromises.length > 0) {
+        await Promise.all(deletePromises);
+      }
+    } catch (cleanErr) {
+      console.warn('Hero slides cleanup notice:', cleanErr);
+    }
+
+    // 3. Update store_settings/hero as well if size permits
+    try {
+      const heroDoc = doc(db, 'store_settings', 'hero');
+      await setDoc(
+        heroDoc,
+        {
+          heroSlides: cleanSlides,
+          updated_at: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (sizeErr) {
+      console.warn('store_settings/hero notice (used hero_slides collection instead):', sizeErr);
+    }
   } catch (error) {
     console.error('Failed to save hero slides to Firestore:', error);
   }
@@ -423,9 +474,17 @@ export async function publishSettingsToCloud(
 ) {
   try {
     await Promise.all([
-      setDoc(doc(db, 'store_settings', 'general'), { storeSettings: JSON.parse(JSON.stringify(storeSettings)), updated_at: new Date().toISOString() }, { merge: true }),
-      setDoc(doc(db, 'store_settings', 'theme'), { themeSettings: JSON.parse(JSON.stringify(themeSettings)), updated_at: new Date().toISOString() }, { merge: true }),
-      setDoc(doc(db, 'store_settings', 'hero'), { heroSlides: JSON.parse(JSON.stringify(heroSlides)), updated_at: new Date().toISOString() }, { merge: true }),
+      setDoc(
+        doc(db, 'store_settings', 'general'),
+        { storeSettings: JSON.parse(JSON.stringify(storeSettings)), updated_at: new Date().toISOString() },
+        { merge: true }
+      ),
+      setDoc(
+        doc(db, 'store_settings', 'theme'),
+        { themeSettings: JSON.parse(JSON.stringify(themeSettings)), updated_at: new Date().toISOString() },
+        { merge: true }
+      ),
+      saveHeroSlidesToCloud(heroSlides),
     ]);
   } catch (error) {
     console.error('Failed to publish settings to Firestore:', error);

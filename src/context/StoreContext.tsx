@@ -238,6 +238,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         rating: typeof p.rating === 'number' ? p.rating : 5.0,
         reviews_count: typeof p.reviews_count === 'number' ? p.reviews_count : 0,
         availability_status: p.availability_status || 'available',
+        image_fit: 'cover',
         images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [
           {
             id: `img-${p.id || idx}-def`,
@@ -277,7 +278,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(() => {
     const saved = safeStorage.getItem('mb_hero_slides');
-    return saved ? JSON.parse(saved) : initialHeroSlides;
+    if (!saved) return initialHeroSlides;
+    try {
+      const parsed: HeroSlide[] = JSON.parse(saved);
+      // Ensure any legacy exaggerated heights revert to balanced standard
+      return parsed.map((slide) => ({
+        ...slide,
+        desktop_height:
+          slide.desktop_height === 'cinematic' || slide.desktop_height === 'fullscreen'
+            ? 'standard'
+            : (slide.desktop_height || 'standard'),
+      }));
+    } catch {
+      return initialHeroSlides;
+    }
   });
 
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => {

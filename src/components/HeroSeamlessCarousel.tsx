@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Sparkles, ArrowUpRight } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { HeroSlide } from '../types';
+import { HeroParticles } from './HeroParticles';
 
 export const HeroSeamlessCarousel: React.FC = () => {
   const { heroSlides, themeSettings, setActiveView } = useStore();
@@ -109,14 +110,38 @@ export const HeroSeamlessCarousel: React.FC = () => {
   const isPulsingActive =
     themeSettings.hero_pulse_animation !== false && slide.pulse_animation !== false;
 
+  const isFullWidthBanner = slide.layout_type === 'full_width_banner';
+
   const isFullBackground =
-    slide.layout_type === 'full_background' ||
-    Boolean(slide.background_image && slide.layout_type !== 'split');
+    !isFullWidthBanner &&
+    (slide.layout_type === 'full_background' ||
+      Boolean(slide.background_image && slide.layout_type !== 'split'));
 
   const fullBgImage = slide.background_image || (isFullBackground ? slide.desktop_image : undefined);
 
   // Overlay opacity calculation
   const overlayPercent = slide.overlay_opacity !== undefined ? slide.overlay_opacity : (isFullBackground ? 40 : 15);
+
+  // Focal position class for preventing top/head/title cropping on wide or full screens
+  const imagePositionClass =
+    slide.image_position === 'top'
+      ? 'object-top'
+      : slide.image_position === 'bottom'
+      ? 'object-bottom'
+      : slide.image_position === 'center'
+      ? 'object-center'
+      : slide.image_fit === 'full_width'
+      ? 'object-top' // default for full_width to protect top headlines and artwork
+      : 'object-center';
+
+  // Dynamic responsive height keeping natural, comfortable banner scale
+  const containerHeightClass = (() => {
+    if (slide.desktop_height === 'compact') {
+      return 'min-h-[380px] sm:min-h-[440px] lg:min-h-[480px]';
+    }
+    // Standard / Default (comfortable balanced height):
+    return 'min-h-[440px] sm:min-h-[480px] lg:min-h-[520px]';
+  })();
 
   return (
     <section
@@ -127,6 +152,13 @@ export const HeroSeamlessCarousel: React.FC = () => {
       onBlur={() => setIsPaused(false)}
       aria-label="معرض ميني بازار الرئيسي"
     >
+      {/* Floating Animated Particles Layer */}
+      <HeroParticles
+        effect={slide.particles_effect}
+        density={slide.particles_density}
+        speed={slide.particles_speed}
+      />
+
       {/* Full-width Animated Background Canvas */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
         {/* Base background color/gradient */}
@@ -152,19 +184,33 @@ export const HeroSeamlessCarousel: React.FC = () => {
               x: { duration: 20, repeat: Infinity, ease: 'easeInOut' },
               scale: { duration: 16, repeat: Infinity, ease: 'easeInOut' },
             }}
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-full h-full overflow-hidden"
           >
+            {/* Ambient Blurred Backdrop for widescreen full-bleed coverage */}
+            {(slide.image_fit === 'contain' || slide.image_fit === 'full_width') && (
+              <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+                <img
+                  src={fullBgImage}
+                  alt=""
+                  className="w-full h-full object-cover filter blur-3xl scale-120 opacity-65"
+                />
+              </div>
+            )}
+
+            {/* Foreground Main Image with Precision Scaling & Focal Alignment */}
             <img
               src={fullBgImage}
               alt=""
-              className={`w-full h-full object-${slide.image_fit || 'cover'} transform ${
-                slide.background_blur ? 'filter blur-[8px]' : ''
-              }`}
+              className={`relative w-full h-full ${
+                slide.image_fit === 'contain'
+                  ? `object-contain ${imagePositionClass}`
+                  : `object-cover ${imagePositionClass}`
+              } transform ${slide.background_blur ? 'filter blur-[8px]' : ''}`}
             />
 
             {/* Smart Overlay for High Contrast and Pristine Readability */}
             <div
-              className="absolute inset-0 transition-opacity duration-500"
+              className="absolute inset-0 transition-opacity duration-500 pointer-events-none"
               style={{
                 backgroundColor: '#2F2B28',
                 opacity: overlayPercent / 100,
@@ -173,9 +219,9 @@ export const HeroSeamlessCarousel: React.FC = () => {
 
             {/* Gradient Scrim for Split or Full backgrounds */}
             {isFullBackground ? (
-              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent pointer-events-none" />
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-r from-[#FBF8F3]/90 via-[#FBF8F3]/60 to-[#FBF8F3]/90" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#FBF8F3]/90 via-[#FBF8F3]/60 to-[#FBF8F3]/90 pointer-events-none" />
             )}
           </motion.div>
         )}
@@ -216,7 +262,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
       </div>
 
       {/* Main Slides Carousel Container with Touch & Drag Support */}
-      <div className="relative min-h-[480px] sm:min-h-[540px] lg:min-h-[600px] w-full flex items-center z-10">
+      <div className={`relative ${containerHeightClass} w-full flex items-center z-10`}>
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={slide.id}
@@ -237,15 +283,100 @@ export const HeroSeamlessCarousel: React.FC = () => {
             }}
             className="absolute inset-0 w-full h-full flex items-center justify-center px-4 sm:px-12 lg:px-20 cursor-grab active:cursor-grabbing"
           >
-            <div className="max-w-7xl w-full mx-auto py-10">
-              {/* Full Background Mode Layout */}
-              {isFullBackground ? (
+            <div className="max-w-7xl w-full mx-auto py-4 sm:py-6 lg:py-8">
+              {/* 1. Full Width Horizontal Panoramic Banner Mode */}
+              {isFullWidthBanner ? (
+                <div className="flex flex-col w-full py-1 sm:py-2">
+                  <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] rounded-[20px] sm:rounded-[24px] overflow-hidden shadow-xl border-2 border-white/80 group bg-[#2F2B28] flex items-center justify-center">
+                    {/* Ambient Glow behind contain/full_width */}
+                    {(slide.image_fit === 'contain' || slide.image_fit === 'full_width') && (
+                      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+                        <img
+                          src={slide.desktop_image || fullBgImage || ''}
+                          alt=""
+                          className="w-full h-full object-cover filter blur-2xl scale-110 opacity-40"
+                        />
+                      </div>
+                    )}
+                    <img
+                      src={slide.desktop_image || fullBgImage || ''}
+                      alt={slide.title_ar}
+                      className={`relative ${
+                        slide.image_fit === 'contain'
+                          ? 'max-w-full max-h-full w-auto h-auto object-contain object-center p-2 sm:p-4'
+                          : `w-full h-full object-cover ${imagePositionClass}`
+                      } transform group-hover:scale-102 transition-transform duration-700 select-none`}
+                    />
+                    {/* Atmospheric Scrim & Gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
+
+                    {/* Integrated Horizontal Caption & CTA Bar */}
+                    <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 sm:gap-4 z-10">
+                      <div className="max-w-2xl text-right">
+                        {slide.badge_ar && (
+                          <div
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold mb-1.5 shadow-md backdrop-blur-md"
+                            style={{
+                              backgroundColor: slide.badge_bg || '#2F2B28',
+                              color: slide.badge_color || '#C6A36A',
+                              borderColor: '#C6A36A',
+                              borderWidth: '1px',
+                            }}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
+                            <span>{slide.badge_ar}</span>
+                          </div>
+                        )}
+                        <h1
+                          className="text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.2] font-heading drop-shadow-md text-white mb-1.5"
+                          style={{ color: slide.title_color || '#FFFFFF' }}
+                        >
+                          {slide.title_ar}
+                        </h1>
+                        <p
+                          className="text-xs sm:text-sm md:text-base leading-relaxed text-[#F4ECE2] drop-shadow-sm font-medium line-clamp-2"
+                          style={{ color: slide.description_color || '#F4ECE2' }}
+                        >
+                          {slide.description_ar}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <button
+                          onClick={() => handleCtaClick(slide.primary_button_url)}
+                          style={{
+                            backgroundColor: slide.button_bg || '#C6A36A',
+                            color: slide.button_text_color || '#2F2B28',
+                          }}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-[12px] font-bold text-xs sm:text-sm shadow-xl transition-all active:scale-95 border border-[#C6A36A] hover:brightness-110"
+                        >
+                          <span>{slide.primary_button_text}</span>
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                        {slide.secondary_button_text && (
+                          <button
+                            onClick={() => handleCtaClick(slide.secondary_button_url || '#')}
+                            style={{
+                              backgroundColor: slide.secondary_button_bg || 'rgba(0,0,0,0.45)',
+                              color: slide.secondary_button_text_color || '#FFFFFF',
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 sm:py-3 rounded-[12px] font-semibold text-xs sm:text-sm border border-white/40 backdrop-blur-md transition-all active:scale-95 hover:bg-white/20"
+                          >
+                            <span>{slide.secondary_button_text}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : isFullBackground ? (
+                /* 2. Full Background Mode Layout with Frosted Luxury Backdrop Card */
                 <div
                   className={`max-w-2xl text-right z-10 ${
                     slide.text_alignment === 'center'
-                      ? 'mx-auto text-center'
-                      : 'ml-auto'
-                  }`}
+                      ? 'mx-auto text-center flex flex-col items-center'
+                      : 'ml-auto flex flex-col items-start'
+                  } bg-black/40 backdrop-blur-md p-6 sm:p-8 rounded-[24px] border border-white/15 shadow-2xl`}
                 >
                   {/* Badge */}
                   {slide.badge_ar && (
@@ -316,7 +447,7 @@ export const HeroSeamlessCarousel: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                /* Split Layout Mode (Text + Visual Card) */
+                /* 3. Split Layout Mode (Text + Visual Card) */
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
                   {/* Text Side (RTL Right side) */}
                   <div className="lg:col-span-6 flex flex-col items-start text-right z-10">
@@ -387,20 +518,34 @@ export const HeroSeamlessCarousel: React.FC = () => {
 
                   {/* Visual Showcase Side (Left side in RTL) */}
                   <div className="lg:col-span-6 relative flex justify-center items-center">
-                    <div className="relative w-full max-w-[480px] aspect-4/3 sm:aspect-1/1 rounded-[28px] overflow-hidden shadow-2xl border-4 border-white bg-[#F4ECE2]/40 flex items-center justify-center p-2">
+                    <div className={`relative w-full ${
+                      slide.image_fit === 'full_width'
+                        ? 'max-w-none aspect-[16/9] sm:aspect-[2/1] rounded-[24px]'
+                        : 'max-w-[460px] aspect-[4/3] sm:aspect-[1/1] rounded-[24px]'
+                    } overflow-hidden shadow-xl border-4 border-white ${
+                      slide.image_fit === 'cover' || slide.image_fit === 'full_width'
+                        ? 'bg-[#2F2B28]'
+                        : 'bg-[#F4ECE2]/70 p-3 sm:p-5'
+                    } flex items-center justify-center`}>
                       <img
                         src={slide.desktop_image}
                         alt={slide.title_ar}
-                        className={`w-full h-full object-${slide.image_fit || 'contain'} transform hover:scale-105 transition-transform duration-700`}
+                        className={`${
+                          slide.image_fit === 'contain'
+                            ? 'max-w-full max-h-full w-auto h-auto object-contain object-center'
+                            : `w-full h-full object-cover ${imagePositionClass}`
+                        } transform hover:scale-102 transition-transform duration-500 select-none`}
                         loading="eager"
                       />
-                      {/* Subtle luxury gradient vignette */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+                      {/* Subtle luxury gradient vignette for non-contained cards */}
+                      {slide.image_fit !== 'contain' && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
+                      )}
 
                       {/* Micro floating luxury seal */}
-                      <div className="absolute bottom-5 right-5 bg-white/95 backdrop-blur-md rounded-[16px] px-3.5 py-2 border border-[#E7D4BC] shadow-md flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#C6A36A] animate-pulse" />
-                        <span className="text-xs font-bold text-[#6F584A]">
+                      <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md rounded-[14px] px-3 py-1.5 border border-[#E7D4BC] shadow-sm flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-[#C6A36A] animate-pulse" />
+                        <span className="text-[11px] font-bold text-[#6F584A]">
                           مختارات حصرية أصلية 100%
                         </span>
                       </div>
