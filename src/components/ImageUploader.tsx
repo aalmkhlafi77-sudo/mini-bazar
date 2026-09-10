@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   Link2,
 } from 'lucide-react';
-import { imageUploadService } from '../services/imageUploadService';
+import { imageUploadService, inspectImageContent } from '../services/imageUploadService';
 
 export interface ImageUploaderProps {
   label: string;
@@ -92,10 +92,20 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const handleFileProcess = async (file: File) => {
     if (!file) return;
 
-    // Validate mime type
-    if (!file.type.startsWith('image/')) {
+    // 1. File size limit guard (5 MB Max)
+    if (file.size > 5 * 1024 * 1024) {
       setStatusMessage({
-        text: 'الملف المحدد ليس صورة مدعومة. يرجى اختيار ملف صورة.',
+        text: 'حجم ملف الصورة يتجاوز الحد الأقصى المسموح به (5 ميجابايت).',
+        type: 'error',
+      });
+      return;
+    }
+
+    // 2. Inspect both file metadata and raw binary magic bytes (do not rely on extension alone)
+    const inspection = await inspectImageContent(file);
+    if (!inspection.valid) {
+      setStatusMessage({
+        text: inspection.error || 'نوع الملف أو محتواه غير مدعوم. الصيغ المدعومة هي: JPEG, PNG, WebP, GIF فقط.',
         type: 'error',
       });
       return;
@@ -179,16 +189,47 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
   const handleApplyUrl = () => {
     const clean = directUrl.trim();
-    if (clean) {
-      triggerChange(clean);
-      setDirectUrl('');
-      setShowUrlInput(false);
+    if (!clean) return;
+
+    // 1. Explicitly reject SVG
+    if (clean.toLowerCase().includes('.svg') || clean.toLowerCase().includes('image/svg')) {
       setStatusMessage({
-        text: 'تم تطبيق رابط الصورة الخارجي بنجاح',
-        type: 'success',
+        text: 'صيغة SVG غير مدعومة نهائياً لأسباب أمنية وتوافقية. يرجى استخدام صور JPEG أو PNG أو WebP أو GIF.',
+        type: 'error',
       });
-      setTimeout(() => setStatusMessage(null), 3500);
+      return;
     }
+
+    // 2. Explicitly reject BMP, HEIC, HEIF
+    if (
+      /\.(bmp|dib|heic|heif|heics|heifs)(\?|$)/i.test(clean) ||
+      clean.toLowerCase().includes('image/bmp') ||
+      clean.toLowerCase().includes('image/heic')
+    ) {
+      setStatusMessage({
+        text: 'صيغ BMP و HEIC و HEIF غير مدعومة حالياً لأنها غير مدعومة بشكل قياسي عبر جميع المتصفحات أو محرّك Canvas. يرجى استخدام أو تحويل الصورة إلى JPEG أو PNG أو WebP.',
+        type: 'error',
+      });
+      return;
+    }
+
+    // 3. Prevent pasting local Base64 / blob URLs directly
+    if (clean.startsWith('data:') || clean.startsWith('blob:')) {
+      setStatusMessage({
+        text: 'لا يُسمح بإدخال روابط مؤقتة Base64 أو Blob كرابط دائم.',
+        type: 'error',
+      });
+      return;
+    }
+
+    triggerChange(clean);
+    setDirectUrl('');
+    setShowUrlInput(false);
+    setStatusMessage({
+      text: 'تم تطبيق رابط الصورة الخارجي بنجاح',
+      type: 'success',
+    });
+    setTimeout(() => setStatusMessage(null), 3500);
   };
 
   const getAspectClass = () => {
@@ -310,7 +351,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={handleFileInputChange}
             className="hidden"
           />
@@ -318,7 +359,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             capture="environment"
             onChange={handleFileInputChange}
             className="hidden"
@@ -330,7 +371,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             <button
               type="button"
               disabled={isProcessing}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                fileInputRef.current?.click();
+              }}
               className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-[12px] bg-[#2F2B28] hover:bg-[#231F1D] text-white text-xs font-bold shadow-xs active:scale-95 transition-all disabled:opacity-50 shrink-0"
               title="اختيار صورة من الكمبيوتر أو من ألبوم صور الجوال"
             >
@@ -352,7 +396,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             <button
               type="button"
               disabled={isProcessing}
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => {
+                if (cameraInputRef.current) cameraInputRef.current.value = '';
+                cameraInputRef.current?.click();
+              }}
               className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-[12px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#2F2B28] text-xs font-bold border border-[#D9C1A7] shadow-2xs active:scale-95 transition-all disabled:opacity-50 shrink-0"
               title="التقاط صورة فورية بالكاميرا الخلفية للهاتف"
             >

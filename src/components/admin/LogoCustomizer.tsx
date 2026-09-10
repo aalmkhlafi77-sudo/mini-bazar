@@ -1,11 +1,16 @@
 import React from 'react';
-import { Sparkles, RotateCcw, Check, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, RotateCcw, Check, AlertTriangle } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { ImageUploader } from '../ImageUploader';
 import { MiniBazaarLogo } from '../MiniBazaarLogo';
 
 export const LogoCustomizer: React.FC = () => {
   const { storeSettings, updateStoreSettings } = useStore();
+
+  const isLocalLogo =
+    Boolean(storeSettings.custom_logo_url) &&
+    (storeSettings.custom_logo_url!.startsWith('data:') ||
+      storeSettings.custom_logo_url!.startsWith('blob:'));
 
   const handleLogoChange = (url: string) => {
     updateStoreSettings({ custom_logo_url: url });
@@ -42,13 +47,27 @@ export const LogoCustomizer: React.FC = () => {
         )}
       </div>
 
+      {isLocalLogo && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-[16px] flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-xs">
+              تم اختيار الشعار ومعاينته، لكن يلزم إعداد خدمة التخزين قبل الحفظ النهائي
+            </p>
+            <p className="text-[11px] text-amber-700 mt-0.5">
+              يظهر الشعار حالياً في المعاينة الحية فقط، ولن يتم حفظه نهائياً في السجلات السحابية حتى ربط خدمة التخزين أو استخدام رابط خارجي.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Upload Control */}
         <div className="lg:col-span-7">
           <ImageUploader
             value={storeSettings.custom_logo_url || ''}
             onChange={handleLogoChange}
-            label="رفع صورة الشعار من الكمبيوتر أو معرض الجوال أو الكاميرا (يدعم PNG, JPG, WebP, SVG)"
+            label="رفع صورة الشعار من الكمبيوتر أو معرض الجوال أو الكاميرا (يدعم JPEG, PNG, WebP, GIF)"
             aspectRatioHint="يفضل شعار مربع أو دائري بنسبة 1:1 أو خلفية شفافة"
             maxDimension={600}
             quality={0.9}

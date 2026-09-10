@@ -34,9 +34,11 @@ describe('Real Firebase Rules Integration Testing (Firestore & Storage)', () => 
         },
       });
       emulatorAvailable = true;
-    } catch (err) {
-      console.warn('Firebase emulator not reachable on 127.0.0.1:8080. Skipping live emulator integration tests.');
+    } catch (err: any) {
       emulatorAvailable = false;
+      throw new Error(
+        'محاكيات Firebase Emulator غير متاحة في البيئة الحالية (السبب: يتطلب تشغيل firebase emulators توفر Java Runtime وهو غير مثبت في الحاوية). لا يمكن تشغيل اختبارات المحاكي الحية محلياً ولا يتم عرضها كأنها نجحت بوضع Skip.'
+      );
     }
   });
 
@@ -46,10 +48,9 @@ describe('Real Firebase Rules Integration Testing (Firestore & Storage)', () => 
     }
   });
 
-  beforeEach(async (ctx) => {
+  beforeEach(async () => {
     if (!emulatorAvailable || !testEnv) {
-      ctx.skip();
-      return;
+      throw new Error('Firebase Emulator testEnv غير متوفر.');
     }
     await testEnv.clearFirestore();
     await testEnv.clearStorage();

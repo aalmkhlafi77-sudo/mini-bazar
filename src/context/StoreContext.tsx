@@ -928,7 +928,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateStoreSettings = (newSettings: Partial<StoreSettings>) => {
     setStoreSettings((prev) => {
       const updated = { ...prev, ...newSettings };
-      safeStorage.setItem('mb_store_settings', JSON.stringify(updated));
+      // Sanitize: do not write un-uploaded local preview images (data: or blob:) to localStorage
+      const storageSafe = { ...updated };
+      if (
+        storageSafe.custom_logo_url &&
+        (storageSafe.custom_logo_url.startsWith('data:') || storageSafe.custom_logo_url.startsWith('blob:'))
+      ) {
+        delete storageSafe.custom_logo_url;
+      }
+      safeStorage.setItem('mb_store_settings', JSON.stringify(storageSafe));
       saveStoreSettingsToCloud(updated);
       return updated;
     });
