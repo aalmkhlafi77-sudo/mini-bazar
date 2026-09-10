@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --mb-bg: #FBF8F3;
+    --mb-bg-alt: #F7F1E8;
+    --mb-surface: #FFFFFF;
+    --mb-surface-soft: #F4ECE2;
+    --mb-surface-warm: #EFE3D4;
+
+    --mb-beige-light: #F5E9D8;
+    --mb-linen: #E7D4BC;
+    --mb-sand: #D9C1A7;
+
+    --mb-gold: #C6A36A;
+    --mb-gold-hover: #AE8951;
+
+    --mb-taupe: #8A7465;
+    --mb-taupe-strong: #6F584A;
+
+    --mb-text: #2F2B28;
+    --mb-text-soft: #5F5751;
+    --mb-muted: #7C736D;
+    --mb-border: #E5D8C9;
+
+    --mb-success: #607866;
+    --mb-warning: #B68A45;
+    --mb-danger: #B4574A;
+    --mb-info: #6E7F87;
+  }
+
+  body {
+    font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--mb-bg);
+    color: var(--mb-text);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Cairo', sans-serif;
+  }
+}
+
+/* Custom scrollbars and transitions */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F4ECE2;
+}
+::-webkit-scrollbar-thumb {
+  background: #D9C1A7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C6A36A;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.88; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
+@keyframes marqueeRtl {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(50%); }
+}
+
+@keyframes marqueeLtr {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marqueeRtl 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Category continuous carousel track animations */
+@keyframes categoryMarqueeRtl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+@keyframes categoryMarqueeLtr {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.category-marquee-rtl {
+  animation: categoryMarqueeRtl var(--carousel-duration, 28s) linear infinite;
+}
+
+.category-marquee-ltr {
+  animation: categoryMarqueeLtr var(--carousel-duration, 28s) linear infinite;
+}
+
+.category-marquee-paused {
+  animation-play-state: paused !important;
+}
+
+.hover-pause:hover {
+  animation-play-state: paused;
+}
+

@@ -1,0 +1,297 @@
+import React, { useState } from 'react';
+import { useStore } from '../context/StoreContext';
+import { ProductCard } from './ProductCard';
+import { Sparkles, SlidersHorizontal, PackageSearch, Award, X } from 'lucide-react';
+
+export const ProductGrid: React.FC = () => {
+  const {
+    products,
+    selectedCategory,
+    setSelectedCategory,
+    selectedBrand,
+    setSelectedBrand,
+    brands,
+    categories,
+    searchQuery,
+    setSearchQuery,
+    storeSettings,
+  } = useStore();
+
+  const [filterType, setFilterType] = useState<'all' | 'best_seller' | 'new'>('all');
+
+  const activeCategoryObj = categories.find((c) => c.id === selectedCategory);
+  const activeBrandObj = brands.find((b) => b.id === selectedBrand);
+
+  const brandSettings = storeSettings?.brand_settings || {
+    display_mode: 'both',
+    logo_size: 'medium',
+    show_product_count: true,
+    show_on_product_card: true,
+    show_in_product_modal: true,
+    show_filter_bar: true,
+    filter_title_ar: 'تصفية بحسب العلامة التجارية (البراند):',
+  };
+
+  const displayMode = brandSettings.display_mode || 'both';
+  const logoSize = brandSettings.logo_size || 'medium';
+  const showProductCount = brandSettings.show_product_count !== false;
+  const showFilterBar = brandSettings.show_filter_bar !== false;
+
+  // Active brands for filter chips
+  const activeBrands = brands
+    .filter((b) => b.is_active)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  // Logo dimension classes
+  const getLogoImgClass = () => {
+    switch (logoSize) {
+      case 'small':
+        return 'w-6 h-6 rounded-[8px]';
+      case 'large':
+        return 'w-11 h-11 rounded-[14px]';
+      case 'medium':
+      default:
+        return 'w-8 h-8 sm:w-9 sm:h-9 rounded-[10px]';
+    }
+  };
+
+  // Filter products by active category, active brand, search query, and filter tag
+  const filteredProducts = products.filter((p) => {
+    if (!p.is_active) return false;
+    if (selectedCategory && p.category_id !== selectedCategory) return false;
+    if (selectedBrand && p.brand_id !== selectedBrand) return false;
+    if (filterType === 'best_seller' && !p.is_best_seller) return false;
+    if (filterType === 'new' && !p.is_new) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchNameAr = p.name_ar.toLowerCase().includes(q);
+      const matchNameEn = p.name_en.toLowerCase().includes(q);
+      const matchSku = p.sku.toLowerCase().includes(q);
+      const matchDesc = p.description_ar.toLowerCase().includes(q);
+      const brandObj = brands.find((b) => b.id === p.brand_id);
+      const matchBrandAr = brandObj ? brandObj.name_ar.toLowerCase().includes(q) : false;
+      const matchBrandEn = brandObj ? brandObj.name_en.toLowerCase().includes(q) : false;
+      return matchNameAr || matchNameEn || matchSku || matchDesc || matchBrandAr || matchBrandEn;
+    }
+
+    return true;
+  });
+
+  return (
+    <section id="products-section" className="py-12 px-4 sm:px-8 max-w-7xl mx-auto">
+      {/* Header and Filter Controls */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+        <div className="text-right">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#C6A36A] mb-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>مختارات استثنائية</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#2F2B28] font-heading flex items-center gap-2">
+            <span>
+              {activeBrandObj
+                ? `معروضات ${activeBrandObj.name_ar}`
+                : activeCategoryObj
+                ? activeCategoryObj.name_ar
+                : 'كتالوج المنتجات المختارة'}
+            </span>
+          </h2>
+
+          {(activeBrandObj || activeCategoryObj) && (
+            <p className="text-sm text-[#7C736D] mt-1 max-w-2xl">
+              {activeBrandObj?.description_ar || activeCategoryObj?.description_ar}
+            </p>
+          )}
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setFilterType('all')}
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              filterType === 'all'
+                ? 'bg-[#2F2B28] text-white shadow-2xs border border-[#4A3E37]'
+                : 'bg-[#F4ECE2] text-[#2F2B28] hover:bg-[#E7D4BC]'
+            }`}
+          >
+            جميع المعروضات ({filteredProducts.length})
+          </button>
+
+          <button
+            onClick={() => setFilterType('best_seller')}
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              filterType === 'best_seller'
+                ? 'bg-[#2F2B28] text-white shadow-2xs border border-[#4A3E37]'
+                : 'bg-[#F4ECE2] text-[#2F2B28] hover:bg-[#E7D4BC]'
+            }`}
+          >
+            الأكثر طلباً
+          </button>
+
+          <button
+            onClick={() => setFilterType('new')}
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              filterType === 'new'
+                ? 'bg-[#2F2B28] text-white shadow-2xs border border-[#4A3E37]'
+                : 'bg-[#F4ECE2] text-[#2F2B28] hover:bg-[#E7D4BC]'
+            }`}
+          >
+            وصل حديثاً
+          </button>
+        </div>
+      </div>
+
+      {/* Brand Filters Bar */}
+      {showFilterBar && activeBrands.length > 0 && (
+        <div className="mb-8 p-4 bg-[#FBF8F3] rounded-[24px] border border-[#E7D4BC] shadow-2xs">
+          <div className="flex items-center justify-between gap-3 mb-3 px-1">
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#6F584A]">
+              <Award className="w-4 h-4 sm:w-5 sm:h-5 text-[#C6A36A]" />
+              <span>{brandSettings.filter_title_ar || 'تصفية بحسب العلامة التجارية (البراند):'}</span>
+            </div>
+
+            {(selectedBrand || selectedCategory) && (
+              <button
+                onClick={() => {
+                  setSelectedBrand(null);
+                  setSelectedCategory(null);
+                }}
+                className="text-[11px] sm:text-xs text-[#B4574A] hover:underline flex items-center gap-1 font-semibold"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>إلغاء الفلاتر</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-2 pt-0.5 scrollbar-thin">
+            {/* All Brands Button */}
+            <button
+              onClick={() => setSelectedBrand(null)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-[14px] text-xs font-bold transition-all shrink-0 border ${
+                selectedBrand === null
+                  ? 'bg-[#2F2B28] text-white border-[#2F2B28] shadow-sm'
+                  : 'bg-white text-[#5F5751] hover:bg-[#F4ECE2] border-[#E5D8C9]'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[#C6A36A]"></span>
+              <span>كافة البراندات</span>
+            </button>
+
+            {/* Individual Brand Buttons */}
+            {activeBrands.map((brand) => {
+              const isSelected = selectedBrand === brand.id;
+              const brandProductCount = products.filter(
+                (p) =>
+                  p.is_active &&
+                  p.brand_id === brand.id &&
+                  (!selectedCategory || p.category_id === selectedCategory)
+              ).length;
+
+              return (
+                <button
+                  key={brand.id}
+                  onClick={() => setSelectedBrand(isSelected ? null : brand.id)}
+                  title={`${brand.name_ar}${brand.name_en ? ` (${brand.name_en})` : ''} - ${brandProductCount} منتج`}
+                  className={`group relative flex items-center gap-2.5 transition-all shrink-0 border ${
+                    displayMode === 'logo_only'
+                      ? 'p-2 rounded-[16px]'
+                      : 'px-3.5 py-2 rounded-[14px]'
+                  } ${
+                    isSelected
+                      ? 'bg-[#2F2B28] text-white border-[#2F2B28] shadow-sm ring-2 ring-[#C6A36A]/40'
+                      : 'bg-white text-[#2F2B28] hover:bg-[#F4ECE2] border-[#E5D8C9] hover:border-[#C6A36A]/50'
+                  }`}
+                >
+                  {/* 1. Brand Logo (if in 'both' or 'logo_only' mode) */}
+                  {displayMode !== 'name_only' && (
+                    <div
+                      className={`relative shrink-0 overflow-hidden bg-white rounded-[10px] border flex items-center justify-center ${
+                        isSelected ? 'border-[#C6A36A] shadow-2xs' : 'border-[#E5D8C9]'
+                      } ${
+                        logoSize === 'large'
+                          ? 'w-11 h-11 sm:w-12 sm:h-12'
+                          : logoSize === 'small'
+                          ? 'w-6 h-6'
+                          : 'w-8 h-8 sm:w-9 sm:h-9'
+                      }`}
+                    >
+                      {brand.logo_path ? (
+                        <img
+                          src={brand.logo_path}
+                          alt={brand.name_ar}
+                          className="w-full h-full object-contain p-0.5"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="font-bold text-xs text-[#8A7465]">
+                          {brand.name_ar.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 2. Brand Name (if in 'both' or 'name_only' mode) */}
+                  {displayMode !== 'logo_only' && (
+                    <span className="text-xs font-bold leading-none tracking-tight">
+                      {brand.name_ar}
+                    </span>
+                  )}
+
+                  {/* 3. Product Count Badge */}
+                  {showProductCount && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold leading-none shrink-0 ${
+                        isSelected
+                          ? 'bg-[#C6A36A] text-[#2F2B28]'
+                          : 'bg-[#F4ECE2] text-[#6F584A]'
+                      }`}
+                    >
+                      {brandProductCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Grid of Cards */}
+      {filteredProducts.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="text-center py-16 px-4 bg-[#F7F1E8]/50 rounded-[28px] border border-[#E7D4BC] my-8">
+          <div className="w-16 h-16 rounded-full bg-[#F4ECE2] text-[#C6A36A] flex items-center justify-center mx-auto mb-4">
+            <PackageSearch className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold text-[#2F2B28] mb-2 font-heading">
+            لم نتمكن من العثور على نتائج مطابقة
+          </h3>
+          <p className="text-xs text-[#7C736D] max-w-md mx-auto mb-6">
+            جربي البحث بكلمات أخرى أو تصفحي أقسام المتجر المختلفة للوصول إلى المنتجات المرغوبة.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => {
+                setSelectedCategory(null);
+                setSelectedBrand(null);
+                setSearchQuery('');
+                setFilterType('all');
+              }}
+              className="px-5 py-2.5 rounded-[14px] bg-[#2F2B28] hover:bg-[#231F1D] text-white text-xs font-semibold shadow-xs"
+            >
+              عرض كافة المعروضات
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};

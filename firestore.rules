@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Role-Based Access Control: Real Firebase Custom Claims
+    // Only users with custom claim `admin == true` assigned securely by server/admin SDK have admin privileges.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isSafeUrl(url) {
+      return url is string && url.size() <= 2048;
+    }
+
+    // Catalog: Products (Public read, Custom Claim Admin write/delete)
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && isValidId(productId)
+        && request.resource.data.name_ar is string
+        && request.resource.data.name_ar.size() <= 500
+        && (!('images' in request.resource.data) || request.resource.data.images is list);
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    // Catalog: Categories (Public read, Custom Claim Admin write/delete)
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidId(categoryId);
+    }
+
+    // Catalog: Brands (Public read, Custom Claim Admin write/delete)
+    match /brands/{brandId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidId(brandId);
+    }
+
+    // Hero Slides: Unified Collection (Public read, Custom Claim Admin write/delete)
+    match /hero_slides/{slideId} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && isValidId(slideId)
+        && request.resource.data.title_ar is string
+        && request.resource.data.title_ar.size() <= 500
+        && (!('desktop_image' in request.resource.data) || isSafeUrl(request.resource.data.desktop_image))
+        && (!('mobile_image' in request.resource.data) || isSafeUrl(request.resource.data.mobile_image));
+      allow delete: if isAdmin() && isValidId(slideId);
+    }
+
+    // Orders: Public Creation with Schema Guard, Custom Claim Admin-only Read/Update/Delete
+    // Regular Auth users and Visitors CANNOT read, update, or delete any orders
+    match /orders/{orderId} {
+      allow read: if isAdmin();
+      allow create: if isValidId(orderId)
+        && request.resource.data.keys().hasOnly([
+            'id', 'order_number', 'customer_name_snapshot', 'customer_phone_snapshot',
+            'customer_email_snapshot', 'address_snapshot', 'subtotal', 'delivery_fee',
+            'discount_total', 'grand_total', 'delivery_method_snapshot',
+            'payment_method_snapshot', 'status', 'notes', 'receipt_image',
+            'bank_transfer_confirmed', 'created_at', 'updated_at', 'items', 'status_history'
+          ])
+        && request.resource.data.customer_name_snapshot is string
+        && request.resource.data.customer_name_snapshot.size() > 0
+        && request.resource.data.customer_name_snapshot.size() <= 200
+        && request.resource.data.customer_phone_snapshot is string
+        && request.resource.data.customer_phone_snapshot.size() > 0
+        && request.resource.data.customer_phone_snapshot.size() <= 50
+        && request.resource.data.grand_total is number
+        && request.resource.data.grand_total >= 0
+        && request.resource.data.grand_total <= 10000000
+        && (!('items' in request.resource.data) || (request.resource.data.items is list && request.resource.data.items.size() <= 200))
+        && (!('notes' in request.resource.data) || (request.resource.data.notes is string && request.resource.data.notes.size() <= 2000));
+      allow update, delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // Store Settings (general, theme)
+    match /store_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(settingId);
+    }
+
+    // Admin Credentials Document (Protected strictly from public tampering & non-admin users)
+    match /admin_credentials/{credId} {
+      allow read, write: if isAdmin() && isValidId(credId);
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
