@@ -1,12 +1,12 @@
 {
-  "projectId": "inner-abstraction-x1ttq",
-  "appId": "1:383090493520:web:7115bb48271645b7936955",
-  "apiKey": "AIzaSyBEw1zC_rryPBx44eaphADBit-2jRim2d0",
-  "authDomain": "inner-abstraction-x1ttq.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-minibazaar-8804aa4a-babc-465a-a062-433fc4c3ee49",
-  "storageBucket": "inner-abstraction-x1ttq.firebasestorage.app",
-  "messagingSenderId": "383090493520",
+  "projectId": "mini-bazar-demo",
+  "appId": "1:251262402131:web:d3dea5a5741818ad5750a6",
+  "apiKey": "AIzaSyBb_JGFOvsfnHNax_sZi6F03AWs6V7_K_A",
+  "authDomain": "mini-bazar-demo.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "mini-bazar-demo.firebasestorage.app",
+  "messagingSenderId": "251262402131",
   "measurementId": "",
-  "oAuthClientId": "383090493520-nk9sfs7mnkgfm17o7v4vdk8fud1cb7cu.apps.googleusercontent.com",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }

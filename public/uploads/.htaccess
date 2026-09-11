@@ -1,0 +1,28 @@
+# Security hardening for uploads directory
+# Strictly prevents execution of scripts (PHP, CGI, Python, Shell, etc.)
+
+# 1. Disable execution of scripts and directory listing
+Options -ExecCGI -Indexes
+
+# 2. Deny any execution of PHP or server scripts
+<FilesMatch "(?i)\.(php|php3|php4|php5|php7|php8|phtml|phps|cgi|pl|py|sh|bash|exe|asp|aspx|jsp|shtml)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# 3. Only allow serving valid, safe raster/animated images
+<FilesMatch "(?i)\.(jpe?g|png|webp|gif)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# 4. Turn off PHP engine if mod_php is loaded
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>

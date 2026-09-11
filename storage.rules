@@ -1,0 +1,51 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Role-Based Access Control: Real Firebase Custom Claims or Verified Store Owner Email
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'a.almkhlafi77@gmail.com'
+      );
+    }
+
+    // MIME type check: Restrict strictly to standard web raster image formats (JPEG, PNG, WebP, GIF)
+    // SVG is explicitly excluded to eliminate XML-based Cross-Site Scripting (XSS) vectors
+    function isAllowedImageType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+
+    // Payload size check: Max 5 MB per image asset
+    function isUnderSizeLimit() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+
+    // Uploaded Store Assets & Product Images:
+    // - Public Read: Allowed for storefront presentation and visitors
+    // - Admin Write: Strictly constrained to admins with custom claim, validated image types, and <= 5MB size
+    // - Admin Delete: Strictly constrained to admins with custom claim
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isAllowedImageType() && isUnderSizeLimit();
+      allow delete: if isAdmin();
+    }
+
+    // Legacy or General Images Path
+    match /images/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isAllowedImageType() && isUnderSizeLimit();
+      allow delete: if isAdmin();
+    }
+
+    // Default deny for anything outside uploads/images
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -20,51 +20,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { MiniBazaarLogo } from './MiniBazaarLogo';
-
-// Helper to compress uploaded receipt image to lightweight JPEG
-const compressReceiptImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX_DIM = 1200;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          }
-        } else {
-          if (height > MAX_DIM) {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(e.target?.result as string);
-          return;
-        }
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        resolve(dataUrl);
-      };
-      img.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => reject(new Error('فشل قراءة الملف'));
-    reader.readAsDataURL(file);
-  });
-};
+import { imageUploadService } from '../services/imageUploadService';
 
 export const CheckoutView: React.FC = () => {
   const {
@@ -146,13 +102,22 @@ export const CheckoutView: React.FC = () => {
     try {
       setIsProcessingReceipt(true);
       setErrorMessage(null);
-      const compressedDataUrl = await compressReceiptImage(file);
-      setBankReceiptImage(compressedDataUrl);
-      setBankReceiptFileName(file.name || 'bank_receipt.jpg');
-      setIsBankTransferConfirmed(true);
-    } catch (err) {
-      console.error('Error compressing receipt image:', err);
-      setErrorMessage('تعذر معالجة صورة الإشعار، يرجى المحاولة بصورة أخرى أو بصيغة JPG');
+      const res = await imageUploadService.upload(file, {
+        folder: 'receipts',
+        maxDimension: 1200,
+        quality: 0.82,
+      });
+
+      if (res.success && res.url) {
+        setBankReceiptImage(res.url);
+        setBankReceiptFileName(file.name || 'bank_receipt.jpg');
+        setIsBankTransferConfirmed(true);
+      } else {
+        setErrorMessage(res.error || 'تعذر معالجة صورة الإشعار');
+      }
+    } catch (err: any) {
+      console.error('Error processing receipt image:', err);
+      setErrorMessage(err?.message || 'تعذر معالجة صورة الإشعار، يرجى المحاولة بصورة أخرى أو بصيغة JPG');
     } finally {
       setIsProcessingReceipt(false);
     }
@@ -755,8 +720,14 @@ export const CheckoutView: React.FC = () => {
                   : 0;
               const quantity = typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1;
               const imgSrc =
-                item.variant?.image_path ||
-                (Array.isArray(item.product.images) && item.product.images[0]?.path) ||
+                (item.variant?.image_path && item.variant.image_path.trim() !== ''
+                  ? item.variant.image_path
+                  : null) ||
+                (Array.isArray(item.product.images) &&
+                item.product.images[0]?.path &&
+                item.product.images[0].path.trim() !== ''
+                  ? item.product.images[0].path
+                  : null) ||
                 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=400&q=80';
               const displayName = item.product.name_ar || item.product.name_en || 'منتج ميني بازار';
 

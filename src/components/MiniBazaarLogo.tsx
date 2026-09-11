@@ -25,14 +25,21 @@ export const MiniBazaarLogo: React.FC<MiniBazaarLogoProps> = ({
     customLogoUrl = undefined;
   }
 
+  const [imgError, setImgError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [customLogoUrl]);
+
   // Render Emblem / Icon
   const renderEmblem = (sizeClass = 'w-10 h-10') => {
-    if (customLogoUrl) {
+    if (customLogoUrl && !imgError) {
       return (
         <div className={`relative ${sizeClass} shrink-0 rounded-full overflow-hidden border border-[#C6A36A] p-0.5 bg-white shadow-2xs`}>
           <img
             src={customLogoUrl}
             alt="شعار ميني بازار"
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover rounded-full"
           />
         </div>

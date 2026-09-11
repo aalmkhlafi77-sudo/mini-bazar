@@ -18,10 +18,12 @@ import {
   Maximize2,
   Save,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Brand, BrandDisplayMode, BrandLogoSize, BrandSettings } from '../../types';
 import { ImageUploader } from '../ImageUploader';
+import { imageUploadService } from '../../services/imageUploadService';
 
 interface BrandManagerProps {
   onSuccess: (message?: string) => void;
@@ -61,6 +63,7 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
     brands[0]?.id || null
   );
   const [settingsSavedToast, setSettingsSavedToast] = useState(false);
+  const [brandStorageNotice, setBrandStorageNotice] = useState<string | null>(null);
 
   const filteredBrands = brands.filter(
     (b) =>
@@ -70,6 +73,7 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
   );
 
   const handleOpenAddModal = () => {
+    setBrandStorageNotice(null);
     setEditingBrand({
       id: `brand-${Date.now()}`,
       name_ar: '',
@@ -85,13 +89,24 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
   };
 
   const handleOpenEditModal = (brand: Brand) => {
+    setBrandStorageNotice(null);
     setEditingBrand({ ...brand });
     setIsModalOpen(true);
   };
 
   const handleSaveBrand = (e: React.FormEvent) => {
     e.preventDefault();
+    setBrandStorageNotice(null);
     if (!editingBrand || !editingBrand.name_ar.trim()) return;
+
+    // Strict Guard: Prevent saving brand if logo is an un-uploaded local preview
+    const validation = imageUploadService.validateRecordImages([editingBrand.logo_path]);
+    if (!validation.canSave) {
+      setBrandStorageNotice(
+        validation.message || 'تم اختيار الصورة ومعاينتها، لكن يلزم إعداد خدمة التخزين قبل الحفظ النهائي'
+      );
+      return;
+    }
 
     // Auto-generate slug if empty
     let cleanSlug = editingBrand.slug.trim();
@@ -516,7 +531,7 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
                               : 'w-8 h-8 sm:w-9 sm:h-9'
                           }`}
                         >
-                          {brand.logo_path ? (
+                          {brand.logo_path && brand.logo_path.trim() !== '' ? (
                             <img
                               src={brand.logo_path}
                               alt={brand.name_ar}
@@ -632,7 +647,7 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
                       {/* Enlarged Logo Container */}
                       <td className="p-4">
                         <div className="w-14 h-14 rounded-[14px] bg-white border-2 border-[#E7D4BC] p-1 flex items-center justify-center overflow-hidden shadow-2xs">
-                          {brand.logo_path ? (
+                          {brand.logo_path && brand.logo_path.trim() !== '' ? (
                             <img
                               src={brand.logo_path}
                               alt={brand.name_ar}
@@ -782,9 +797,10 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
                 <ImageUploader
                   value={editingBrand.logo_path || ''}
                   onChange={(url) => setEditingBrand({ ...editingBrand, logo_path: url })}
-                  label="شعار أو صورة البراند (من الجهاز أو رابط)"
+                  label="شعار أو صورة البراند (من الجهاز، ألبوم الجوال، أو الكاميرا)"
                   aspectRatioHint="يفضل صورة مربعة عالية الدقة أو شعار بخلفية بيضاء أو شفافة"
                   maxDimension={800}
+                  folder="brands"
                 />
               </div>
 
@@ -831,6 +847,19 @@ export const BrandManager: React.FC<BrandManagerProps> = ({ onSuccess }) => {
                   </label>
                 </div>
               </div>
+
+              {/* Storage Setup Notice Banner */}
+              {brandStorageNotice && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-[16px] flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-xs">{brandStorageNotice}</p>
+                    <p className="text-[11px] text-amber-700 mt-0.5">
+                      تم الاحتفاظ بالشعار في النموذج للمعاينة الحالية، ولكن يلزم إعداد خادم التخزين قبل الحفظ النهائي أو إدخال رابط خارجي.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 border-t border-[#E5D8C9] flex items-center justify-end gap-3">
                 <button

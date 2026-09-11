@@ -66,3 +66,13 @@ Thumbs.db
 *.sln
 *.sw?
 
+*-firebase-adminsdk-*.json
+
+# Runtime uploads: keep only folder protection files in Git
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/.htaccess
+
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/.htaccess

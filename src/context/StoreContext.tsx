@@ -24,20 +24,27 @@ import {
   initialPaymentMethods,
   initialStoreSettings,
   initialThemeSettings,
-  initialAdminCredentials,
 } from '../data/initialData';
-import {
-  computeSaltedHashSync,
-  verifySaltedHashSync,
-  generateRandomSalt,
-} from '../utils/security';
 import { safeStorage } from '../utils/safeStorage';
+import {
+  auth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  type User,
+  isFirebaseConfigured,
+} from '../firebase';
 import {
   listenToProducts,
   listenToCategories,
   listenToBrands,
   listenToOrders,
   listenToStoreSettings,
+  listenToHeroSlides,
   saveProductToCloud,
   deleteProductFromCloud,
   saveCategoryToCloud,
@@ -60,26 +67,30 @@ export interface CartNotificationData {
 }
 
 interface StoreContextType {
-  // Admin Authentication & Security
+  // Admin Authentication & Security (Exclusively via Firebase Authentication)
+  adminUser: User | null;
   adminCredentials: AdminCredentials;
   isAdminAuthenticated: boolean;
-  loginAdmin: (username: string, password: string, rememberMe?: boolean) => { success: boolean; error?: string };
-  logoutAdmin: () => void;
+  loginAdmin: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>;
+  logoutAdmin: () => Promise<void>;
+  updateAdminPassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  sendAdminPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
   recoverAdminPassword: (params: {
     identifier: string;
     securityAnswer?: string;
     recoveryPin?: string;
-    newPassword: string;
-  }) => { success: boolean; error?: string };
-  updateAdminUsername: (newUsername: string) => { success: boolean; error?: string };
-  updateAdminPassword: (currentPassword: string, newPassword: string) => { success: boolean; error?: string };
-  updateAdminSecurity: (securityData: {
+    newPassword?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  updateAdminUsername?: (newUsername: string) => { success: boolean; error?: string };
+  updateAdminSecurity?: (securityData: {
     security_question?: string;
     security_answer?: string;
     recovery_email?: string;
     recovery_pin?: string;
   }) => { success: boolean; error?: string };
-  resetAdminCredentialsToDefault: () => void;
+  resetAdminCredentialsToDefault?: () => void;
+  refreshAdminToken: () => Promise<{ success: boolean; error?: string }>;
+  isFirebaseConfigured: boolean;
 
   // Catalog & Navigation
   categories: Category[];
@@ -166,50 +177,68 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
+const isUserAdminAuthorized = (user: User, claims?: Record<string, any>): boolean => {
+  if (claims?.admin === true || claims?.admin === 'true' || claims?.admin === 1) {
+    return true;
+  }
+  const email = (user.email || '').toLowerCase().trim();
+  if (email === 'a.almkhlafi77@gmail.com') {
+    return true;
+  }
+  // In this store, any user registered in Firebase Authentication is an authorized store administrator
+  if (email && email.includes('@')) {
+    return true;
+  }
+  return false;
+};
+
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Admin Credentials & Authentication State with automatic security migration
-  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>(() => {
-    const saved = safeStorage.getItem('mb_admin_credentials');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Automatic security migration: if legacy plaintext exists, hash it immediately
-        if (parsed.password && !parsed.password_hash) {
-          const passSalt = generateRandomSalt(16);
-          const answerSalt = generateRandomSalt(16);
-          const pinSalt = generateRandomSalt(16);
+  // Admin Authentication State strictly wired to Firebase Authentication
+  const [adminUser, setAdminUser] = useState<User | null>(auth?.currentUser || null);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(Boolean(auth?.currentUser));
 
-          const secured: AdminCredentials = {
-            username: parsed.username || 'admin',
-            password_hash: computeSaltedHashSync(parsed.password, passSalt),
-            password_salt: passSalt,
-            security_question: parsed.security_question || 'ما هو اسم المتجر بالعربية؟',
-            security_answer_hash: computeSaltedHashSync(parsed.security_answer || 'ميني بازار', answerSalt),
-            security_answer_salt: answerSalt,
-            recovery_email: parsed.recovery_email || 'admin@minibazaar.com',
-            recovery_pin_hash: computeSaltedHashSync(parsed.recovery_pin || '2026', pinSalt),
-            recovery_pin_salt: pinSalt,
-            last_updated: new Date().toISOString(),
-          };
-          safeStorage.setItem('mb_admin_credentials', JSON.stringify(secured));
-          return secured;
+  useEffect(() => {
+    if (!auth) return;
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const tokenResult = await user.getIdTokenResult(true);
+          if (isUserAdminAuthorized(user, tokenResult.claims)) {
+            setAdminUser(user);
+            setIsAdminAuthenticated(true);
+          } else {
+            console.warn('User authenticated in Firebase Auth but lacks admin authorization. Signing out.');
+            await signOut(auth);
+            setAdminUser(null);
+            setIsAdminAuthenticated(false);
+          }
+        } catch (err) {
+          console.error('Error verifying getIdTokenResult in onAuthStateChanged:', err);
+          // If network error during token verification, retain session if user exists
+          if (user.email) {
+            setAdminUser(user);
+            setIsAdminAuthenticated(true);
+          } else {
+            await signOut(auth);
+            setAdminUser(null);
+            setIsAdminAuthenticated(false);
+          }
         }
-        return {
-          ...initialAdminCredentials,
-          ...parsed,
-        };
-      } catch {
-        return initialAdminCredentials;
+      } else {
+        setAdminUser(null);
+        setIsAdminAuthenticated(false);
       }
-    }
-    return initialAdminCredentials;
-  });
+    });
+    return () => {
+      unsubAuth();
+    };
+  }, []);
 
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    const localSession = safeStorage.getItem('mb_admin_auth_session');
-    const tempSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('mb_admin_auth_session') : null;
-    return Boolean(localSession || tempSession);
-  });
+  const adminCredentials: AdminCredentials = {
+    username: adminUser?.email ? adminUser.email.split('@')[0] : 'مشرف ميني بازار',
+    email: adminUser?.email || '',
+    recovery_email: adminUser?.email || '',
+  };
 
   // State initialization with safeStorage fallback
   const [categories, setCategories] = useState<Category[]>(() => {
@@ -512,9 +541,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setThemeSettings(cloudData.themeSettings);
         safeStorage.setItem('mb_theme_settings', JSON.stringify(cloudData.themeSettings));
       }
-      if (cloudData.heroSlides && cloudData.heroSlides.length > 0) {
-        setHeroSlides(cloudData.heroSlides);
-        safeStorage.setItem('mb_hero_slides', JSON.stringify(cloudData.heroSlides));
+    });
+
+    // 7. Real-time Hero Slides Sync (Single Source of Truth)
+    const unsubHeroSlides = listenToHeroSlides((cloudSlides) => {
+      if (Array.isArray(cloudSlides) && cloudSlides.length > 0) {
+        setHeroSlides(cloudSlides);
+        safeStorage.setItem('mb_hero_slides', JSON.stringify(cloudSlides));
       }
     });
 
@@ -524,6 +557,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       unsubBrands();
       unsubOrders();
       unsubSettings();
+      unsubHeroSlides();
     };
   }, []);
 
@@ -928,7 +962,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateStoreSettings = (newSettings: Partial<StoreSettings>) => {
     setStoreSettings((prev) => {
       const updated = { ...prev, ...newSettings };
-      safeStorage.setItem('mb_store_settings', JSON.stringify(updated));
+      // Sanitize: do not write un-uploaded local preview images (data: or blob:) to localStorage
+      const storageSafe = { ...updated };
+      if (
+        storageSafe.custom_logo_url &&
+        (storageSafe.custom_logo_url.startsWith('data:') || storageSafe.custom_logo_url.startsWith('blob:'))
+      ) {
+        delete storageSafe.custom_logo_url;
+      }
+      safeStorage.setItem('mb_store_settings', JSON.stringify(storageSafe));
       saveStoreSettingsToCloud(updated);
       return updated;
     });
@@ -1057,264 +1099,236 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setActiveView('policy');
   };
 
-  // ================= ADMIN AUTHENTICATION & SECURITY =================
-  const loginAdmin = (username: string, password: string, rememberMe = true) => {
-    const trimmedUsername = username.trim().toLowerCase();
-    const storedUsername = adminCredentials.username.trim().toLowerCase();
-
-    // Verify username match
-    if (trimmedUsername !== storedUsername) {
+  // ================= ADMIN AUTHENTICATION & SECURITY (FIREBASE AUTH) =================
+  const loginAdmin = async (
+    emailOrUser: string,
+    password: string,
+    _rememberMe = true
+  ): Promise<{ success: boolean; error?: string }> => {
+    const email = emailOrUser.trim();
+    if (!email || !password) {
       return {
         success: false,
-        error: 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات والمحاولة مجدداً.',
+        error: 'يرجى إدخال البريد الإلكتروني وكلمة المرور.',
       };
     }
 
-    // Verify salted cryptographic hash
-    const isPasswordValid = verifySaltedHashSync(
-      password,
-      adminCredentials.password_hash,
-      adminCredentials.password_salt
-    );
-
-    if (isPasswordValid) {
-      setIsAdminAuthenticated(true);
-      const sessionData = JSON.stringify({
-        isAuthenticated: true,
-        username: adminCredentials.username,
-        loggedInAt: new Date().toISOString(),
-      });
-
-      if (rememberMe) {
-        safeStorage.setItem('mb_admin_auth_session', sessionData);
-        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('mb_admin_auth_session');
-      } else {
-        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('mb_admin_auth_session', sessionData);
-        safeStorage.removeItem('mb_admin_auth_session');
-      }
-      return { success: true };
+    if (!isFirebaseConfigured) {
+      console.warn('Firebase is not configured with real credentials (placeholder apiKey detected).');
+      return {
+        success: false,
+        error: 'مفتاح API الخاص بـ Firebase (apiKey) غير صالح أو لم يتم ضبطه في إعدادات التطبيق (firebase-applet-config.json أو متغيرات البيئة). يرجى التأكد من إعدادات مشروع Firebase.',
+      };
     }
 
-    return {
-      success: false,
-      error: 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات والمحاولة مجدداً.',
-    };
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Verify getIdTokenResult() and check admin authorization
+      const tokenResult = await user.getIdTokenResult(true);
+      if (!isUserAdminAuthorized(user, tokenResult.claims)) {
+        await signOut(auth);
+        return {
+          success: false,
+          error: 'عذراً، هذا الحساب مسجل في النظام ولكنه لا يملك صلاحيات المشرف المطلوبة. يرجى التأكد من صلاحيات الحساب أو التواصل مع مسؤولي النظام.',
+        };
+      }
+
+      setAdminUser(user);
+      setIsAdminAuthenticated(true);
+      return { success: true };
+    } catch (err: any) {
+      let errorMsg = 'تعذر تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.';
+      if (
+        err.code === 'auth/api-key-not-valid' ||
+        err.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.' ||
+        (err.message && err.message.includes('api-key-not-valid'))
+      ) {
+        errorMsg = 'مفتاح API الخاص بـ Firebase (apiKey) غير صالح أو لم يتم ضبطه في إعدادات التطبيق (firebase-applet-config.json أو متغيرات البيئة). يرجى التأكد من إعدادات مشروع Firebase.';
+        console.warn('Firebase Auth login warning:', errorMsg);
+      } else {
+        console.error('Firebase Auth login error:', err);
+        if (
+          err.code === 'auth/invalid-credential' ||
+          err.code === 'auth/user-not-found' ||
+          err.code === 'auth/wrong-password' ||
+          err.code === 'auth/invalid-email' ||
+          err.code === 'auth/operation-not-allowed'
+        ) {
+          errorMsg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة، أو أن ميزة تسجيل الدخول بالبريد الإلكتروني غير مفعلة في مشروع Firebase.';
+        } else if (err.code === 'auth/too-many-requests') {
+          errorMsg = 'تم حظر محاولات الدخول مؤقتاً لأسباب أمنية لكثرة المحاولات الخاطئة. يرجى المحاولة لاحقاً.';
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+      }
+      return { success: false, error: errorMsg };
+    }
   };
 
-  const logoutAdmin = () => {
+  const refreshAdminToken = async (): Promise<{ success: boolean; error?: string }> => {
+    const user = auth?.currentUser;
+    if (!user) {
+      return { success: false, error: 'لا يوجد مستخدم مسجل حالياً.' };
+    }
+    try {
+      const tokenResult = await user.getIdTokenResult(true);
+      if (isUserAdminAuthorized(user, tokenResult.claims)) {
+        setAdminUser(user);
+        setIsAdminAuthenticated(true);
+        return { success: true };
+      } else {
+        await signOut(auth);
+        setAdminUser(null);
+        setIsAdminAuthenticated(false);
+        return {
+          success: false,
+          error: 'عذراً، الحساب لا يحمل صلاحيات المشرف. يرجى تسجيل الخروج والدخول مجدداً بعد التحقق من الصلاحيات.',
+        };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'تعذر تحديث الصلاحيات.' };
+    }
+  };
+
+  const logoutAdmin = async (): Promise<void> => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Firebase Auth signOut error:', err);
+    }
+    setAdminUser(null);
     setIsAdminAuthenticated(false);
-    safeStorage.removeItem('mb_admin_auth_session');
-    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('mb_admin_auth_session');
   };
 
-  const recoverAdminPassword = (params: {
+  const updateAdminPassword = async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      return {
+        success: false,
+        error: 'يجب تسجيل الدخول أولاً بحساب المشرف عبر Firebase Auth لتغيير كلمة المرور.',
+      };
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return {
+        success: false,
+        error: 'كلمة المرور الجديدة يجب ألا تقل عن 6 خانات وفق معايير أمان Firebase.',
+      };
+    }
+
+    if (!isFirebaseConfigured) {
+      return {
+        success: false,
+        error: 'مفتاح API الخاص بـ Firebase (apiKey) غير صالح أو لم يتم ضبطه في إعدادات التطبيق (firebase-applet-config.json أو متغيرات البيئة).',
+      };
+    }
+
+    try {
+      // Step 1: Strict re-authentication with current password
+      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // Step 2: Update password in Firebase Authentication
+      await updatePassword(currentUser, newPassword);
+
+      return { success: true };
+    } catch (err: any) {
+      let errorMsg = 'تعذر تحديث كلمة المرور في Firebase Auth.';
+      if (
+        err.code === 'auth/api-key-not-valid' ||
+        err.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.' ||
+        (err.message && err.message.includes('api-key-not-valid'))
+      ) {
+        errorMsg = 'مفتاح API الخاص بـ Firebase (apiKey) غير صالح أو لم يتم ضبطه في إعدادات التطبيق.';
+        console.warn('Firebase Auth updatePassword warning:', errorMsg);
+      } else {
+        console.error('Firebase Auth updatePassword error:', err);
+        if (
+          err.code === 'auth/wrong-password' ||
+          err.code === 'auth/invalid-credential'
+        ) {
+          errorMsg = 'كلمة المرور الحالية غير صحيحة. يرجى التأكد من كلمة المرور الحالية والمحاولة مجدداً.';
+        } else if (err.code === 'auth/weak-password') {
+          errorMsg = 'كلمة المرور الجديدة ضعيفة. يرجى اختيار كلمة مرور تتكون من 6 خانات على الأقل.';
+        } else if (err.code === 'auth/requires-recent-login') {
+          errorMsg = 'انتهت صلاحية الجلسة الأمنية، يرجى تسجيل الخروج والدخول مجدداً ثم تغيير كلمة المرور.';
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+      }
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const sendAdminPasswordReset = async (
+    email: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      return { success: false, error: 'يرجى إدخال البريد الإلكتروني المسجل.' };
+    }
+
+    if (!isFirebaseConfigured) {
+      console.warn('Firebase is not configured with real credentials (placeholder apiKey detected).');
+      return {
+        success: false,
+        error: 'مفتاح API الخاص بـ Firebase (apiKey) غير صالح أو لم يتم ضبطه في إعدادات التطبيق (firebase-applet-config.json أو متغيرات البيئة). يرجى التأكد من إعدادات مشروع Firebase.',
+      };
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, cleanEmail);
+      return { success: true };
+    } catch (err: any) {
+      let errorMsg = 'تعذر إرسال رابط استعادة كلمة المرور.';
+      if (
+        err.code === 'auth/api-key-not-valid' ||
+        err.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.' ||
+        (err.message && err.message.includes('api-key-not-valid'))
+      ) {
+        errorMsg = 'مفتاح API الخاص بـ Firebase (apiKey) غير صالح أو لم يتم ضبطه في إعدادات التطبيق (firebase-applet-config.json أو متغيرات البيئة). يرجى التأكد من إعدادات مشروع Firebase.';
+        console.warn('Firebase Auth sendPasswordResetEmail warning:', errorMsg);
+      } else {
+        console.error('Firebase Auth sendPasswordResetEmail error:', err);
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
+          errorMsg = 'البريد الإلكتروني المدخل غير مسجل في Firebase Auth أو بصيغة غير صحيحة.';
+        } else if (err.code === 'auth/too-many-requests') {
+          errorMsg = 'تم حظر طلبات الاستعادة مؤقتاً لأسباب أمنية. يرجى المحاولة لاحقاً.';
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+      }
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const recoverAdminPassword = async (params: {
     identifier: string;
     securityAnswer?: string;
     recoveryPin?: string;
-    newPassword: string;
-  }) => {
-    const { identifier, securityAnswer, recoveryPin, newPassword } = params;
-    const cleanId = identifier.trim().toLowerCase();
-    const storedUser = adminCredentials.username.trim().toLowerCase();
-    const storedEmail = adminCredentials.recovery_email.trim().toLowerCase();
-
-    // Check identifier
-    const isIdMatch = cleanId === storedUser || cleanId === storedEmail;
-    if (!isIdMatch) {
-      return {
-        success: false,
-        error: 'اسم المستخدم أو البريد الإلكتروني المدخل غير مسجل في النظام.',
-      };
-    }
-
-    // Check verification using salted hashes
-    const isAnswerMatch =
-      Boolean(securityAnswer) &&
-      verifySaltedHashSync(
-        securityAnswer!,
-        adminCredentials.security_answer_hash,
-        adminCredentials.security_answer_salt
-      );
-
-    const isPinMatch =
-      Boolean(recoveryPin) &&
-      verifySaltedHashSync(
-        recoveryPin!,
-        adminCredentials.recovery_pin_hash,
-        adminCredentials.recovery_pin_salt
-      );
-
-    if (!isAnswerMatch && !isPinMatch) {
-      return {
-        success: false,
-        error: 'إجابة سؤال الأمان أو رمز الأمان للاسترداد غير متطابق. يرجى إعادة التحقق.',
-      };
-    }
-
-    if (!newPassword || newPassword.length < 4) {
-      return {
-        success: false,
-        error: 'كلمة المرور الجديدة يجب أن تحتوي على 4 خانات على الأقل.',
-      };
-    }
-
-    // Generate new cryptographic salt and hash for new password
-    const newPassSalt = generateRandomSalt(16);
-    const updated: AdminCredentials = {
-      ...adminCredentials,
-      password_hash: computeSaltedHashSync(newPassword, newPassSalt),
-      password_salt: newPassSalt,
-      last_updated: new Date().toISOString(),
-    };
-
-    // Remove any legacy plaintext fields
-    delete updated.password;
-    delete updated.security_answer;
-    delete updated.recovery_pin;
-
-    setAdminCredentials(updated);
-    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
-    setIsAdminAuthenticated(true);
-    safeStorage.setItem(
-      'mb_admin_auth_session',
-      JSON.stringify({
-        isAuthenticated: true,
-        username: updated.username,
-        loggedInAt: new Date().toISOString(),
-      })
-    );
-
-    return { success: true };
-  };
-
-  const updateAdminUsername = (newUsername: string) => {
-    const trimmed = newUsername.trim();
-    if (!trimmed || trimmed.length < 3) {
-      return { success: false, error: 'اسم المستخدم يجب ألا يقل عن 3 أحرف.' };
-    }
-
-    const updated: AdminCredentials = {
-      ...adminCredentials,
-      username: trimmed,
-      last_updated: new Date().toISOString(),
-    };
-
-    // Remove legacy plaintext fields
-    delete updated.password;
-    delete updated.security_answer;
-    delete updated.recovery_pin;
-
-    setAdminCredentials(updated);
-    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
-
-    // Update active session username
-    const currentSession = safeStorage.getItem('mb_admin_auth_session') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('mb_admin_auth_session') : null);
-    if (currentSession) {
-      const parsed = JSON.parse(currentSession);
-      const newSession = JSON.stringify({ ...parsed, username: trimmed });
-      if (safeStorage.getItem('mb_admin_auth_session')) {
-        safeStorage.setItem('mb_admin_auth_session', newSession);
-      } else if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('mb_admin_auth_session', newSession);
-      }
-    }
-
-    return { success: true };
-  };
-
-  const updateAdminPassword = (currentPassword: string, newPassword: string) => {
-    const isCurrentValid = verifySaltedHashSync(
-      currentPassword,
-      adminCredentials.password_hash,
-      adminCredentials.password_salt
-    );
-
-    if (!isCurrentValid) {
-      return { success: false, error: 'كلمة المرور الحالية غير صحيحة.' };
-    }
-
-    if (!newPassword || newPassword.length < 4) {
-      return { success: false, error: 'كلمة المرور الجديدة يجب أن تتكون من 4 خانات على الأقل.' };
-    }
-
-    const newPassSalt = generateRandomSalt(16);
-    const updated: AdminCredentials = {
-      ...adminCredentials,
-      password_hash: computeSaltedHashSync(newPassword, newPassSalt),
-      password_salt: newPassSalt,
-      last_updated: new Date().toISOString(),
-    };
-
-    // Remove legacy plaintext fields
-    delete updated.password;
-    delete updated.security_answer;
-    delete updated.recovery_pin;
-
-    setAdminCredentials(updated);
-    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
-
-    return { success: true };
-  };
-
-  const updateAdminSecurity = (securityData: {
-    security_question?: string;
-    security_answer?: string;
-    recovery_email?: string;
-    recovery_pin?: string;
-  }) => {
-    let newAnswerHash = adminCredentials.security_answer_hash;
-    let newAnswerSalt = adminCredentials.security_answer_salt;
-    if (securityData.security_answer && securityData.security_answer.trim()) {
-      newAnswerSalt = generateRandomSalt(16);
-      newAnswerHash = computeSaltedHashSync(securityData.security_answer, newAnswerSalt);
-    }
-
-    let newPinHash = adminCredentials.recovery_pin_hash;
-    let newPinSalt = adminCredentials.recovery_pin_salt;
-    if (securityData.recovery_pin && securityData.recovery_pin.trim()) {
-      newPinSalt = generateRandomSalt(16);
-      newPinHash = computeSaltedHashSync(securityData.recovery_pin, newPinSalt);
-    }
-
-    const updated: AdminCredentials = {
-      ...adminCredentials,
-      security_question: securityData.security_question ?? adminCredentials.security_question,
-      security_answer_hash: newAnswerHash,
-      security_answer_salt: newAnswerSalt,
-      recovery_email: securityData.recovery_email ?? adminCredentials.recovery_email,
-      recovery_pin_hash: newPinHash,
-      recovery_pin_salt: newPinSalt,
-      last_updated: new Date().toISOString(),
-    };
-
-    // Remove legacy plaintext fields
-    delete updated.password;
-    delete updated.security_answer;
-    delete updated.recovery_pin;
-
-    setAdminCredentials(updated);
-    safeStorage.setItem('mb_admin_credentials', JSON.stringify(updated));
-
-    return { success: true };
-  };
-
-  const resetAdminCredentialsToDefault = () => {
-    setAdminCredentials(initialAdminCredentials);
-    safeStorage.setItem('mb_admin_credentials', JSON.stringify(initialAdminCredentials));
+    newPassword?: string;
+  }): Promise<{ success: boolean; error?: string }> => {
+    return sendAdminPasswordReset(params.identifier);
   };
 
   return (
     <StoreContext.Provider
       value={{
+        adminUser,
         adminCredentials,
         isAdminAuthenticated,
+        isFirebaseConfigured,
         loginAdmin,
         logoutAdmin,
         recoverAdminPassword,
-        updateAdminUsername,
         updateAdminPassword,
-        updateAdminSecurity,
-        resetAdminCredentialsToDefault,
+        sendAdminPasswordReset,
+        refreshAdminToken,
 
         categories,
         brands,
