@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Check, X, Layers, Image as ImageIcon, Sliders } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, Layers, Image as ImageIcon, Sliders, AlertTriangle } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Category } from '../../types';
 import { ImageUploader } from '../ImageUploader';
 import { CategoryCarouselManager } from './CategoryCarouselManager';
+import { imageUploadService } from '../../services/imageUploadService';
 
 interface CategoryManagerProps {
   onSuccess: () => void;
@@ -15,8 +16,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
   const [activeSubTab, setActiveSubTab] = useState<'categories' | 'carousel'>('categories');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categoryStorageNotice, setCategoryStorageNotice] = useState<string | null>(null);
 
   const handleOpenAddModal = () => {
+    setCategoryStorageNotice(null);
     setEditingCategory({
       id: `cat-${Date.now()}`,
       name_ar: '',
@@ -32,15 +35,26 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
   };
 
   const handleOpenEditModal = (cat: Category) => {
+    setCategoryStorageNotice(null);
     setEditingCategory({ ...cat });
     setIsModalOpen(true);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setCategoryStorageNotice(null);
     if (!editingCategory) return;
     if (!editingCategory.name_ar.trim()) {
       alert('يرجى إدخال اسم التصنيف بالعربية');
+      return;
+    }
+
+    // Strict Guard: Prevent saving category if image is an un-uploaded local preview
+    const validation = imageUploadService.validateRecordImages([editingCategory.image_path]);
+    if (!validation.canSave) {
+      setCategoryStorageNotice(
+        validation.message || 'تم اختيار الصورة ومعاينتها، لكن يلزم إعداد خدمة التخزين قبل الحفظ النهائي'
+      );
       return;
     }
 
@@ -148,7 +162,11 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
                 <tr key={cat.id} className="hover:bg-[#FBF8F3] transition-colors">
                   <td className="p-4 flex items-center gap-3">
                     <img
-                      src={cat.image_path}
+                      src={
+                        cat.image_path && cat.image_path.trim() !== ''
+                          ? cat.image_path
+                          : 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=100&q=80'
+                      }
                       alt={cat.name_ar}
                       className="w-12 h-12 rounded-[12px] object-cover bg-[#F7F1E8] border border-[#E7D4BC] shrink-0"
                     />
@@ -266,9 +284,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
                 <ImageUploader
                   value={editingCategory.image_path}
                   onChange={(url) => setEditingCategory({ ...editingCategory, image_path: url })}
-                  label="صورة القسم (من الجهاز أو رابط)"
-                  aspectRatioHint="يفضل نسبة عرضية أو مربعة 1:1"
+                  label="صورة القسم (من الكمبيوتر، المعرض، أو كاميرا الهاتف)"
+                  aspectRatioHint="يفضل صورة مربعة 1:1 أو عرضية بدقة واضحة"
                   maxDimension={800}
+                  folder="categories"
                 />
               </div>
 
@@ -308,6 +327,19 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onSuccess }) =
                   </label>
                 </div>
               </div>
+
+              {/* Storage Setup Notice Banner */}
+              {categoryStorageNotice && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-[16px] flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-xs">{categoryStorageNotice}</p>
+                    <p className="text-[11px] text-amber-700 mt-0.5">
+                      تم الاحتفاظ بصورة القسم في النموذج للمعاينة الحالية، ولكن يلزم إعداد خادم التخزين قبل الحفظ النهائي أو إدخال رابط خارجي.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5D8C9]">
                 <button

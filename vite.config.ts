@@ -2,10 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import {devUploadPlugin} from './src/server/devUploadPlugin';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), devUploadPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -58,6 +58,7 @@ import { AdminSecuritySettings } from './admin/AdminSecuritySettings';
 export const AdminDashboard: React.FC = () => {
   const {
     isAdminAuthenticated,
+    adminUser,
     adminCredentials,
     logoutAdmin,
     orders,
@@ -814,7 +815,7 @@ ${order.discount_total ? `الخصم المطبق: -${order.discount_total} ر.�
           {/* Logged in admin pill */}
           <div className="px-3 py-2 rounded-[12px] bg-[#FBF8F3] border border-[#D9C1A7] text-xs font-semibold text-[#2F2B28] flex items-center gap-1.5 shadow-2xs">
             <User className="w-3.5 h-3.5 text-[#8A7465]" />
-            <span>المشرف: <strong className="text-[#6F584A] font-mono">{adminCredentials.username}</strong></span>
+            <span>المشرف: <strong className="text-[#6F584A] font-mono">{adminUser?.email || adminCredentials.email || 'مشرف معتمد'}</strong></span>
           </div>
 
           <button

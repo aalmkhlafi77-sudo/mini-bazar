@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Check, Palette, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Trash2, Check, Palette, Sparkles, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { Product, ProductVariant, Category, Brand } from '../../types';
 import { useStore } from '../../context/StoreContext';
 import { ImageUploader } from '../ImageUploader';
+import { imageUploadService } from '../../services/imageUploadService';
 
 interface ProductModalProps {
   product: Product;
@@ -23,6 +24,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const brands = propBrands || contextBrands || [];
   const [formData, setFormData] = useState<Product>({ ...product });
   const [activeSubTab, setActiveSubTab] = useState<'basic' | 'variants' | 'images'>('basic');
+  const [storageNotice, setStorageNotice] = useState<string | null>(null);
 
   const handleAddVariant = () => {
     const newVariant: ProductVariant = {
@@ -60,10 +62,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setStorageNotice(null);
+
     if (!formData.name_ar.trim()) {
       alert('يرجى كتابة اسم المنتج بالعربية');
       return;
     }
+
+    // Strict Guard: Prevent saving record if any image is an un-uploaded local preview
+    const allImages = [
+      ...formData.images.map((img) => img.path),
+      ...formData.variants.map((v) => v.image_path).filter(Boolean),
+    ];
+
+    const validation = imageUploadService.validateRecordImages(allImages);
+    if (!validation.canSave) {
+      setStorageNotice(
+        validation.message || 'تم اختيار الصورة ومعاينتها، لكن يلزم إعداد خدمة التخزين قبل الحفظ النهائي'
+      );
+      return;
+    }
+
     onSave(formData);
   };
 
@@ -455,6 +474,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                           label={`صورة خاصة بالخيار: ${variant.name_ar || `المتغير ${vIdx + 1}`}`}
                           aspectRatioHint="تظهر هذه الصورة فور اختيار العميل لهذا اللون أو المقاس"
                           maxDimension={800}
+                          folder="products"
                         />
                       </div>
                     </div>
@@ -489,6 +509,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 label="رفع الصورة الرئيسية للمنتج من الجهاز مع معالجة الأبعاد تلقائياً"
                 aspectRatioHint="يفضل نسبة مربعة 1:1 بجودة عالية"
                 maxDimension={1000}
+                folder="products"
                 imageFit={formData.image_fit || 'cover'}
                 onImageFitChange={(fit) => setFormData({ ...formData, image_fit: fit })}
               />
@@ -547,6 +568,93 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     </div>
                   </button>
                 </div>
+              </div>
+
+              {/* Additional Gallery Images */}
+              <div className="pt-4 border-t border-[#E7D4BC] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#2F2B28]">معرض الصور الإضافية للمنتج (Gallery)</h4>
+                    <p className="text-[11px] text-[#7C736D]">
+                      أضف زوايا تصوير إضافية لتعرض في نافذة تفاصيل المنتج للعملاء.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newImgs = [...formData.images];
+                      newImgs.push({
+                        id: `img-${Date.now()}-${newImgs.length}`,
+                        product_id: formData.id,
+                        path: '',
+                        alt_text_ar: `${formData.name_ar} - صورة إضافية`,
+                        alt_text_en: `${formData.name_en} - extra image`,
+                        sort_order: newImgs.length + 1,
+                        is_primary: false,
+                      });
+                      setFormData({ ...formData, images: newImgs });
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#2F2B28] text-xs font-bold transition-all border border-[#D9C1A7]"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-[#C6A36A]" />
+                    <span>إضافة صورة للمعرض</span>
+                  </button>
+                </div>
+
+                {formData.images.slice(1).map((extraImg, subIdx) => {
+                  const actualIdx = subIdx + 1;
+                  return (
+                    <div
+                      key={extraImg.id || actualIdx}
+                      className="p-3 bg-white border border-[#E7D4BC] rounded-[16px] relative space-y-2"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-[#6F584A]">
+                          صورة المعرض #{actualIdx}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newImgs = formData.images.filter((_, idx) => idx !== actualIdx);
+                            setFormData({ ...formData, images: newImgs });
+                          }}
+                          className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>حذف من المعرض</span>
+                        </button>
+                      </div>
+                      <ImageUploader
+                        value={extraImg.path}
+                        onChange={(url) => {
+                          const newImgs = [...formData.images];
+                          newImgs[actualIdx] = {
+                            ...newImgs[actualIdx],
+                            path: url,
+                          };
+                          setFormData({ ...formData, images: newImgs });
+                        }}
+                        label={`صورة إضافية ${actualIdx}`}
+                        aspectRatioHint="تظهر في مصغرات المعرض أسفل صورة المنتج"
+                        maxDimension={1000}
+                        folder="products"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Storage Setup Notice Banner */}
+          {storageNotice && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-[16px] flex items-start gap-2.5 shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-xs">{storageNotice}</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  تم الاحتفاظ بالصورة في النموذج للمعاينة الحالية، ولكن لا يمكن حفظ السجل النهائي في قاعدة البيانات حتى ربط خدمة تخزين حقيقية أو استخدام رابط صورة خارجي.
+                </p>
               </div>
             </div>
           )}

@@ -120,7 +120,79 @@ export const HeroSeamlessCarousel: React.FC = () => {
   const fullBgImage = slide.background_image || (isFullBackground ? slide.desktop_image : undefined);
 
   // Overlay opacity calculation
-  const overlayPercent = slide.overlay_opacity !== undefined ? slide.overlay_opacity : (isFullBackground ? 40 : 15);
+  const overlayPercent = slide.overlay_opacity !== undefined ? slide.overlay_opacity : (isFullBackground ? 25 : 0);
+
+  // Clarity, lighting, blur, contrast and zoom scale calculations
+  const blurPx = slide.blur_amount !== undefined ? slide.blur_amount : (slide.background_blur ? 6 : 0);
+  const brightnessVal = slide.brightness !== undefined ? slide.brightness : 100;
+  const contrastVal = slide.contrast !== undefined ? slide.contrast : 100;
+  const zoomScaleVal = slide.zoom_scale !== undefined ? slide.zoom_scale : 100;
+  const showScrim = slide.show_scrim_gradient ?? (isFullBackground ? true : false);
+  const showAmbientBlur = slide.ambient_blur_layer ?? false;
+
+  const imageTransformStyle: React.CSSProperties = {
+    filter: `blur(${blurPx}px) brightness(${brightnessVal}%) contrast(${contrastVal}%)`,
+    transform: `scale(${zoomScaleVal / 100})`,
+    transformOrigin: slide.image_position === 'top' ? 'top center' : slide.image_position === 'bottom' ? 'bottom center' : 'center center',
+    transition: 'filter 0.3s ease, transform 0.3s ease',
+  };
+
+  // Banner border styling classes
+  const bannerBorderStyle = slide.banner_border_style || 'subtle_card';
+  const bannerBorderRadius = slide.banner_border_radius || 'lg';
+  const bannerShadowStyle = slide.banner_shadow_style || 'deep';
+
+  const getBorderRadiusClass = (radius: string = 'lg') => {
+    switch (radius) {
+      case 'none':
+        return 'rounded-none';
+      case 'sm':
+        return 'rounded-[10px] sm:rounded-[12px]';
+      case 'md':
+        return 'rounded-[16px] sm:rounded-[18px]';
+      case 'lg':
+        return 'rounded-[20px] sm:rounded-[24px]';
+      case 'pill':
+        return 'rounded-[32px] sm:rounded-[40px]';
+      default:
+        return 'rounded-[20px] sm:rounded-[24px]';
+    }
+  };
+
+  const getBorderStyleClass = (style: string = 'subtle_card') => {
+    switch (style) {
+      case 'none':
+        return 'border-0 ring-0';
+      case 'glass':
+        return 'border-2 border-white/60 backdrop-blur-md ring-1 ring-white/30';
+      case 'polished':
+        return 'border-2 border-[#D9C1A7] ring-2 ring-[#C6A36A]/40 shadow-inner';
+      case 'gold_luxury':
+        return 'border-2 border-[#C6A36A] ring-1 ring-[#C6A36A]/20';
+      case 'floating_glow':
+        return 'border border-[#C6A36A]/60 shadow-[0_0_25px_rgba(198,163,106,0.35)]';
+      case 'vintage_bevel':
+        return 'border-4 border-[#F4ECE2] ring-2 ring-[#8A7465]/30';
+      case 'subtle_card':
+      default:
+        return 'border-4 border-white';
+    }
+  };
+
+  const getShadowClass = (shadow: string = 'deep') => {
+    switch (shadow) {
+      case 'none':
+        return 'shadow-none';
+      case 'soft':
+        return 'shadow-md';
+      case 'deep':
+        return 'shadow-2xl';
+      case 'golden_glow':
+        return 'shadow-[0_15px_35px_rgba(198,163,106,0.3)]';
+      default:
+        return 'shadow-xl';
+    }
+  };
 
   // Focal position class for preventing top/head/title cropping on wide or full screens
   const imagePositionClass =
@@ -186,42 +258,53 @@ export const HeroSeamlessCarousel: React.FC = () => {
             }}
             className="absolute inset-0 w-full h-full overflow-hidden"
           >
-            {/* Ambient Blurred Backdrop for widescreen full-bleed coverage */}
-            {(slide.image_fit === 'contain' || slide.image_fit === 'full_width') && (
+            {/* Ambient Blurred Backdrop for widescreen full-bleed coverage - only if enabled */}
+            {showAmbientBlur && (slide.image_fit === 'contain' || slide.image_fit === 'full_width') && (
               <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-                <img
-                  src={fullBgImage}
-                  alt=""
-                  className="w-full h-full object-cover filter blur-3xl scale-120 opacity-65"
-                />
+                <picture className="w-full h-full">
+                  {slide.mobile_image && <source media="(max-width: 640px)" srcSet={slide.mobile_image} />}
+                  <img
+                    src={fullBgImage}
+                    alt=""
+                    className="w-full h-full object-cover filter blur-3xl scale-120 opacity-40"
+                  />
+                </picture>
               </div>
             )}
 
-            {/* Foreground Main Image with Precision Scaling & Focal Alignment */}
-            <img
-              src={fullBgImage}
-              alt=""
-              className={`relative w-full h-full ${
-                slide.image_fit === 'contain'
-                  ? `object-contain ${imagePositionClass}`
-                  : `object-cover ${imagePositionClass}`
-              } transform ${slide.background_blur ? 'filter blur-[8px]' : ''}`}
-            />
+            {/* Foreground Main Image with Precision Scaling, Lighting & Clarity */}
+            <picture className="relative w-full h-full block overflow-hidden">
+              {slide.mobile_image && <source media="(max-width: 640px)" srcSet={slide.mobile_image} />}
+              <img
+                src={fullBgImage}
+                alt=""
+                style={imageTransformStyle}
+                className={`w-full h-full ${
+                  slide.image_fit === 'contain'
+                    ? `object-contain ${imagePositionClass}`
+                    : `object-cover ${imagePositionClass}`
+                }`}
+              />
+            </picture>
 
             {/* Smart Overlay for High Contrast and Pristine Readability */}
-            <div
-              className="absolute inset-0 transition-opacity duration-500 pointer-events-none"
-              style={{
-                backgroundColor: '#2F2B28',
-                opacity: overlayPercent / 100,
-              }}
-            />
+            {overlayPercent > 0 && (
+              <div
+                className="absolute inset-0 transition-opacity duration-500 pointer-events-none"
+                style={{
+                  backgroundColor: '#2F2B28',
+                  opacity: overlayPercent / 100,
+                }}
+              />
+            )}
 
             {/* Gradient Scrim for Split or Full backgrounds */}
-            {isFullBackground ? (
-              <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent pointer-events-none" />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-r from-[#FBF8F3]/90 via-[#FBF8F3]/60 to-[#FBF8F3]/90 pointer-events-none" />
+            {showScrim && (
+              isFullBackground ? (
+                <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent pointer-events-none" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FBF8F3]/90 via-[#FBF8F3]/60 to-[#FBF8F3]/90 pointer-events-none" />
+              )
             )}
           </motion.div>
         )}
@@ -287,28 +370,37 @@ export const HeroSeamlessCarousel: React.FC = () => {
               {/* 1. Full Width Horizontal Panoramic Banner Mode */}
               {isFullWidthBanner ? (
                 <div className="flex flex-col w-full py-1 sm:py-2">
-                  <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] rounded-[20px] sm:rounded-[24px] overflow-hidden shadow-xl border-2 border-white/80 group bg-[#2F2B28] flex items-center justify-center">
-                    {/* Ambient Glow behind contain/full_width */}
-                    {(slide.image_fit === 'contain' || slide.image_fit === 'full_width') && (
+                  <div className={`relative w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-[24/9] ${getBorderRadiusClass(bannerBorderRadius)} overflow-hidden ${getShadowClass(bannerShadowStyle)} ${getBorderStyleClass(bannerBorderStyle)} group bg-[#2F2B28] flex items-center justify-center transition-all duration-300`}>
+                    {/* Ambient Glow behind contain/full_width - only if enabled */}
+                    {showAmbientBlur && (slide.image_fit === 'contain' || slide.image_fit === 'full_width') && (
                       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-                        <img
-                          src={slide.desktop_image || fullBgImage || ''}
-                          alt=""
-                          className="w-full h-full object-cover filter blur-2xl scale-110 opacity-40"
-                        />
+                        <picture className="w-full h-full">
+                          {slide.mobile_image && <source media="(max-width: 640px)" srcSet={slide.mobile_image} />}
+                          <img
+                            src={slide.desktop_image || fullBgImage || ''}
+                            alt=""
+                            className="w-full h-full object-cover filter blur-2xl scale-110 opacity-30"
+                          />
+                        </picture>
                       </div>
                     )}
-                    <img
-                      src={slide.desktop_image || fullBgImage || ''}
-                      alt={slide.title_ar}
-                      className={`relative ${
-                        slide.image_fit === 'contain'
-                          ? 'max-w-full max-h-full w-auto h-auto object-contain object-center p-2 sm:p-4'
-                          : `w-full h-full object-cover ${imagePositionClass}`
-                      } transform group-hover:scale-102 transition-transform duration-700 select-none`}
-                    />
-                    {/* Atmospheric Scrim & Gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
+                    <picture className="w-full h-full flex items-center justify-center overflow-hidden">
+                      {slide.mobile_image && <source media="(max-width: 640px)" srcSet={slide.mobile_image} />}
+                      <img
+                        src={slide.desktop_image || fullBgImage || ''}
+                        alt={slide.title_ar}
+                        style={imageTransformStyle}
+                        className={`relative ${
+                          slide.image_fit === 'contain'
+                            ? 'max-w-full max-h-full w-auto h-auto object-contain object-center p-2 sm:p-4'
+                            : `w-full h-full object-cover ${imagePositionClass}`
+                        } select-none`}
+                      />
+                    </picture>
+                    {/* Atmospheric Scrim & Gradient - controlled */}
+                    {showScrim && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+                    )}
 
                     {/* Integrated Horizontal Caption & CTA Bar */}
                     <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 sm:gap-4 z-10">
@@ -520,25 +612,29 @@ export const HeroSeamlessCarousel: React.FC = () => {
                   <div className="lg:col-span-6 relative flex justify-center items-center">
                     <div className={`relative w-full ${
                       slide.image_fit === 'full_width'
-                        ? 'max-w-none aspect-[16/9] sm:aspect-[2/1] rounded-[24px]'
-                        : 'max-w-[460px] aspect-[4/3] sm:aspect-[1/1] rounded-[24px]'
-                    } overflow-hidden shadow-xl border-4 border-white ${
+                        ? 'max-w-none aspect-[16/9] sm:aspect-[2/1]'
+                        : 'max-w-[460px] aspect-[4/3] sm:aspect-[1/1]'
+                    } ${getBorderRadiusClass(bannerBorderRadius)} overflow-hidden ${getShadowClass(bannerShadowStyle)} ${getBorderStyleClass(bannerBorderStyle)} ${
                       slide.image_fit === 'cover' || slide.image_fit === 'full_width'
                         ? 'bg-[#2F2B28]'
                         : 'bg-[#F4ECE2]/70 p-3 sm:p-5'
-                    } flex items-center justify-center`}>
-                      <img
-                        src={slide.desktop_image}
-                        alt={slide.title_ar}
-                        className={`${
-                          slide.image_fit === 'contain'
-                            ? 'max-w-full max-h-full w-auto h-auto object-contain object-center'
-                            : `w-full h-full object-cover ${imagePositionClass}`
-                        } transform hover:scale-102 transition-transform duration-500 select-none`}
-                        loading="eager"
-                      />
-                      {/* Subtle luxury gradient vignette for non-contained cards */}
-                      {slide.image_fit !== 'contain' && (
+                    } flex items-center justify-center transition-all duration-300`}>
+                      <picture className="w-full h-full flex items-center justify-center overflow-hidden">
+                        {slide.mobile_image && <source media="(max-width: 640px)" srcSet={slide.mobile_image} />}
+                        <img
+                          src={slide.desktop_image}
+                          alt={slide.title_ar}
+                          style={imageTransformStyle}
+                          className={`${
+                            slide.image_fit === 'contain'
+                              ? 'max-w-full max-h-full w-auto h-auto object-contain object-center'
+                              : `w-full h-full object-cover ${imagePositionClass}`
+                          } select-none`}
+                          loading="eager"
+                        />
+                      </picture>
+                      {/* Subtle luxury gradient vignette for non-contained cards - only if scrim enabled */}
+                      {showScrim && slide.image_fit !== 'contain' && (
                         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
                       )}
 
