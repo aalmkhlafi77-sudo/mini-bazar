@@ -265,7 +265,6 @@ export function listenToStoreSettings(
   callback: (data: {
     storeSettings?: StoreSettings;
     themeSettings?: ThemeSettings;
-    heroSlides?: HeroSlide[];
   }) => void
 ) {
   try {

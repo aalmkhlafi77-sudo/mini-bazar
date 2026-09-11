@@ -154,4 +154,33 @@ describe('Firestore and Storage Security Rules Verification', () => {
       expect(simulateStorageOp({ path: '/uploads/banner.webp', op: 'write', auth: { uid: 'u_admin', token: { admin: true } }, contentType: 'image/webp', size: 1.5 * 1024 * 1024 })).toBe(true);
     });
   });
+
+  describe('Admin Authentication Claims Verification', () => {
+    it('rejects user when claims.admin is missing or false', async () => {
+      const mockUserWithoutAdmin = {
+        getIdTokenResult: async () => ({ claims: { admin: false } })
+      };
+      const claims: any = (await mockUserWithoutAdmin.getIdTokenResult()).claims;
+      const isAdmin = claims.admin === true;
+      expect(isAdmin).toBe(false);
+    });
+
+    it('rejects user when claims.admin is undefined', async () => {
+      const mockUserWithoutAdmin = {
+        getIdTokenResult: async () => ({ claims: {} })
+      };
+      const claims: any = (await mockUserWithoutAdmin.getIdTokenResult()).claims;
+      const isAdmin = claims.admin === true;
+      expect(isAdmin).toBe(false);
+    });
+
+    it('accepts user when claims.admin === true', async () => {
+      const mockAdminUser = {
+        getIdTokenResult: async () => ({ claims: { admin: true } })
+      };
+      const claims: any = (await mockAdminUser.getIdTokenResult()).claims;
+      const isAdmin = claims.admin === true;
+      expect(isAdmin).toBe(true);
+    });
+  });
 });

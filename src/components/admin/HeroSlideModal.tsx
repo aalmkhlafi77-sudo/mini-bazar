@@ -12,6 +12,18 @@ import {
   Link2,
   ExternalLink,
   AlertTriangle,
+  Sun,
+  Eye,
+  ZoomIn,
+  Contrast,
+  RotateCcw,
+  Layers,
+  Check,
+  Flame,
+  Square,
+  Maximize2,
+  Box,
+  Gem,
 } from 'lucide-react';
 import { HeroSlide } from '../../types';
 import { ImageUploader } from '../ImageUploader';
@@ -34,17 +46,28 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
   const [slide, setSlide] = useState<HeroSlide>({
     ...initialSlide,
     layout_type: initialSlide.layout_type || (initialSlide.background_image ? 'full_background' : 'split'),
-    overlay_opacity: initialSlide.overlay_opacity !== undefined ? initialSlide.overlay_opacity : 30,
+    overlay_opacity: initialSlide.overlay_opacity !== undefined ? initialSlide.overlay_opacity : 0,
     background_blur: Boolean(initialSlide.background_blur),
+    blur_amount: initialSlide.blur_amount !== undefined ? initialSlide.blur_amount : (initialSlide.background_blur ? 6 : 0),
+    brightness: initialSlide.brightness !== undefined ? initialSlide.brightness : 100,
+    contrast: initialSlide.contrast !== undefined ? initialSlide.contrast : 100,
+    zoom_scale: initialSlide.zoom_scale !== undefined ? initialSlide.zoom_scale : 100,
+    show_scrim_gradient: initialSlide.show_scrim_gradient ?? false,
+    ambient_blur_layer: initialSlide.ambient_blur_layer ?? false,
+    banner_border_style: initialSlide.banner_border_style || 'subtle_card',
+    banner_border_radius: initialSlide.banner_border_radius || 'lg',
+    banner_shadow_style: initialSlide.banner_shadow_style || 'deep',
     image_fit: initialSlide.image_fit || 'contain',
     image_position: initialSlide.image_position || 'top',
-    desktop_height: initialSlide.desktop_height || 'cinematic',
+    desktop_height: initialSlide.desktop_height || 'standard',
     particles_effect: initialSlide.particles_effect || 'none',
     particles_density: initialSlide.particles_density || 'medium',
     particles_speed: initialSlide.particles_speed || 'normal',
     primary_button_url: initialSlide.primary_button_url || '#products-section',
     secondary_button_url: initialSlide.secondary_button_url || '',
   });
+
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile' | 'background' | 'composite'>('desktop');
 
   // Helper to determine CTA type
   const getCtaType = (url?: string): 'category' | 'product' | 'anchor' | 'external' => {
@@ -62,6 +85,156 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
     getCtaType(initialSlide.secondary_button_url)
   );
   const [slideStorageNotice, setSlideStorageNotice] = useState<string | null>(null);
+
+  const applyPreset = (preset: 'ultra_clear' | 'vivid_bright' | 'high_zoom' | 'soft_blur' | 'reset') => {
+    switch (preset) {
+      case 'ultra_clear':
+        setSlide((prev) => ({
+          ...prev,
+          blur_amount: 0,
+          background_blur: false,
+          brightness: 100,
+          contrast: 106,
+          zoom_scale: 100,
+          overlay_opacity: 0,
+          show_scrim_gradient: false,
+          ambient_blur_layer: false,
+        }));
+        break;
+      case 'vivid_bright':
+        setSlide((prev) => ({
+          ...prev,
+          blur_amount: 0,
+          background_blur: false,
+          brightness: 115,
+          contrast: 110,
+          zoom_scale: 100,
+          overlay_opacity: 0,
+          show_scrim_gradient: false,
+        }));
+        break;
+      case 'high_zoom':
+        setSlide((prev) => ({
+          ...prev,
+          blur_amount: 0,
+          background_blur: false,
+          brightness: 100,
+          contrast: 100,
+          zoom_scale: 115,
+          overlay_opacity: 5,
+        }));
+        break;
+      case 'soft_blur':
+        setSlide((prev) => ({
+          ...prev,
+          blur_amount: 8,
+          background_blur: true,
+          brightness: 90,
+          contrast: 100,
+          zoom_scale: 100,
+          overlay_opacity: 35,
+          show_scrim_gradient: true,
+        }));
+        break;
+      case 'reset':
+        setSlide((prev) => ({
+          ...prev,
+          blur_amount: 0,
+          background_blur: false,
+          brightness: 100,
+          contrast: 100,
+          zoom_scale: 100,
+          overlay_opacity: 0,
+          show_scrim_gradient: false,
+          ambient_blur_layer: false,
+          banner_border_style: 'subtle_card',
+          banner_border_radius: 'lg',
+          banner_shadow_style: 'deep',
+        }));
+        break;
+    }
+  };
+
+  const getModalBorderRadiusClass = (radius: string = 'lg') => {
+    switch (radius) {
+      case 'none':
+        return 'rounded-none';
+      case 'sm':
+        return 'rounded-[8px] sm:rounded-[10px]';
+      case 'md':
+        return 'rounded-[14px] sm:rounded-[16px]';
+      case 'lg':
+        return 'rounded-[18px] sm:rounded-[22px]';
+      case 'pill':
+        return 'rounded-[30px] sm:rounded-[36px]';
+      default:
+        return 'rounded-[18px] sm:rounded-[22px]';
+    }
+  };
+
+  const getModalBorderStyleClass = (style: string = 'subtle_card') => {
+    switch (style) {
+      case 'none':
+        return 'border-0 ring-0';
+      case 'glass':
+        return 'border-2 border-white/60 backdrop-blur-md ring-1 ring-white/30';
+      case 'polished':
+        return 'border-2 border-[#D9C1A7] ring-2 ring-[#C6A36A]/40 shadow-inner';
+      case 'gold_luxury':
+        return 'border-2 border-[#C6A36A] ring-1 ring-[#C6A36A]/20';
+      case 'floating_glow':
+        return 'border border-[#C6A36A]/60 shadow-[0_0_20px_rgba(198,163,106,0.35)]';
+      case 'vintage_bevel':
+        return 'border-4 border-[#F4ECE2] ring-2 ring-[#8A7465]/30';
+      case 'subtle_card':
+      default:
+        return 'border-3 border-white';
+    }
+  };
+
+  const getModalShadowClass = (shadow: string = 'deep') => {
+    switch (shadow) {
+      case 'none':
+        return 'shadow-none';
+      case 'soft':
+        return 'shadow-md';
+      case 'deep':
+        return 'shadow-xl';
+      case 'golden_glow':
+        return 'shadow-[0_10px_25px_rgba(198,163,106,0.35)]';
+      default:
+        return 'shadow-lg';
+    }
+  };
+
+  const activeImage =
+    previewDevice === 'background'
+      ? slide.background_image || slide.desktop_image || ''
+      : previewDevice === 'mobile' && slide.mobile_image
+      ? slide.mobile_image
+      : slide.desktop_image || slide.background_image || '';
+
+  const activeBlur = slide.blur_amount ?? (slide.background_blur ? 6 : 0);
+  const activeBrightness = slide.brightness ?? 100;
+  const activeContrast = slide.contrast ?? 100;
+  const activeZoom = slide.zoom_scale ?? 100;
+  const activeOverlay = slide.overlay_opacity ?? 0;
+  const activeScrim = slide.show_scrim_gradient ?? false;
+  const bannerBorderRadius = slide.banner_border_radius || 'lg';
+  const bannerBorderStyle = slide.banner_border_style || 'subtle_card';
+  const bannerShadowStyle = slide.banner_shadow_style || 'deep';
+
+  const previewTransformStyle: React.CSSProperties = {
+    filter: `blur(${activeBlur}px) brightness(${activeBrightness}%) contrast(${activeContrast}%)`,
+    transform: `scale(${activeZoom / 100})`,
+    transformOrigin:
+      slide.image_position === 'top'
+        ? 'top center'
+        : slide.image_position === 'bottom'
+        ? 'bottom center'
+        : 'center center',
+    transition: 'filter 0.2s ease, transform 0.2s ease',
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,16 +423,50 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
               </div>
 
               {/* Background Backdrop Image */}
-              <div className="bg-white p-4 rounded-[16px] border border-[#E7D4BC] min-w-0 space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#2F2B28]">
-                  <Sparkles className="w-4 h-4 text-[#C6A36A]" />
-                  <span>صورة الخلفية الإضافية (Background Wallpaper - اختياري)</span>
+              <div className="bg-white p-4 sm:p-5 rounded-[18px] border-2 border-[#E7D4BC] min-w-0 space-y-3.5 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F4ECE2] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#C6A36A]/20 flex items-center justify-center text-[#8A7465]">
+                      <Sparkles className="w-4 h-4 text-[#C6A36A]" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-xs sm:text-sm text-[#2F2B28] block">
+                        صورة الخلفية الإضافية (Background Wallpaper - اختياري)
+                      </span>
+                      <p className="text-[11px] text-[#7C736D]">
+                        خلفية سينمائية بانورامية تظهر تحت المحتوى وتمتد على كامل الشاشة
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Preview & Status Controls */}
+                  <div className="flex items-center gap-2">
+                    {slide.background_image ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDevice('background')}
+                        className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                          previewDevice === 'background'
+                            ? 'bg-[#2F2B28] text-white ring-2 ring-[#C6A36A]'
+                            : 'bg-[#F4ECE2] text-[#6F584A] hover:bg-[#E7D4BC]'
+                        }`}
+                      >
+                        <Eye className="w-3.5 h-3.5 text-[#C6A36A]" />
+                        <span>معاينة الخلفية بالاستوديو</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-[#A89F91] bg-[#FBF8F3] px-2.5 py-1 rounded-full border border-[#E7D4BC]">
+                        لم يتم اختيار خلفية إضافية
+                      </span>
+                    )}
+                  </div>
                 </div>
+
                 <ImageUploader
                   value={slide.background_image || ''}
                   onChange={(url) => setSlide((prev) => ({ ...prev, background_image: url }))}
                   label="خلفية سينمائية تظهر تحت المحتوى"
-                  aspectRatioHint="صورة بانورامية 16:9 بدقة فائقة"
+                  aspectRatioHint="صورة بانورامية 16:9 أو فائقة العرض بدقة عالية"
                   maxDimension={1800}
                   folder="hero"
                 />
@@ -398,7 +605,781 @@ export const HeroSlideModal: React.FC<HeroSlideModalProps> = ({
               </div>
             </div>
 
-            {/* 3. Texts & Titles */}
+            {/* 3. Clarity, Lighting, Blur, Contrast & Zoom Studio */}
+            <div className="p-4 sm:p-5 rounded-[20px] bg-[#FBF8F3] border-2 border-[#C6A36A]/40 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E7D4BC] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-[#C6A36A]/20 flex items-center justify-center text-[#8A7465]">
+                    <Sliders className="w-4 h-4 text-[#C6A36A]" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2F2B28] text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>استوديو دقة الوضوح، الإضاءة، الضبابية، والزوم</span>
+                      <span className="bg-[#C6A36A] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        جديد
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-[#7C736D]">
+                      تحكم كامل بدرجة إضاءة الصورة، وضوحها التام (0px)، إزالة التعتيم، وتعديل نسبة الزوم والملاءمة
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('ultra_clear')}
+                    className="px-2.5 py-1 bg-white hover:bg-[#2F2B28] hover:text-white text-[#2F2B28] border border-[#D9C1A7] rounded-[10px] text-[10px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                    title="إلغاء أي ضبابية أو تعتيم للحصول على صورة نقية 100%"
+                  >
+                    <Eye className="w-3 h-3 text-[#C6A36A]" />
+                    <span>💎 أقصى وضوح ونقاء</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('vivid_bright')}
+                    className="px-2.5 py-1 bg-white hover:bg-[#2F2B28] hover:text-white text-[#2F2B28] border border-[#D9C1A7] rounded-[10px] text-[10px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                    title="زيادة السطوع والتباين لإبراز التفاصيل"
+                  >
+                    <Sun className="w-3 h-3 text-amber-500" />
+                    <span>☀️ إضاءة ساطعة</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('high_zoom')}
+                    className="px-2.5 py-1 bg-white hover:bg-[#2F2B28] hover:text-white text-[#2F2B28] border border-[#D9C1A7] rounded-[10px] text-[10px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                    title="تكبير مركز للصورة مع الحفاظ على الأبعاد"
+                  >
+                    <ZoomIn className="w-3 h-3 text-[#C6A36A]" />
+                    <span>🔍 زوم مركز</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('reset')}
+                    className="px-2 py-1 bg-[#F4ECE2] hover:bg-[#E7D4BC] text-[#6F584A] rounded-[10px] text-[10px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                    title="إعادة تعيين إلى 100% افتراضي نقي"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>إعادة ضبط</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real-time Interactive Live Preview */}
+              <div className="bg-[#2F2B28] rounded-[18px] p-3.5 border border-[#4A3E37] space-y-2">
+                <div className="flex items-center justify-between text-white text-[11px] pb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold flex items-center gap-1.5 text-[#E7D4BC]">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      معاينة مباشرة فورية لتأثيرات الوضوح والإضاءة:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center bg-black/40 p-0.5 rounded-lg border border-white/10 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDevice('desktop')}
+                      className={`px-2 py-1 rounded-[6px] text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                        previewDevice === 'desktop' ? 'bg-[#C6A36A] text-[#2F2B28]' : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      <Monitor className="w-3 h-3" />
+                      <span>سطح المكتب</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDevice('mobile')}
+                      className={`px-2 py-1 rounded-[6px] text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                        previewDevice === 'mobile' ? 'bg-[#C6A36A] text-[#2F2B28]' : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      <Smartphone className="w-3 h-3" />
+                      <span>الجوال</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDevice('background')}
+                      className={`px-2 py-1 rounded-[6px] text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                        previewDevice === 'background' ? 'bg-[#C6A36A] text-[#2F2B28]' : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>الخلفية الإضافية</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDevice('composite')}
+                      className={`px-2 py-1 rounded-[6px] text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                        previewDevice === 'composite' ? 'bg-[#C6A36A] text-[#2F2B28]' : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>المشهد المركّب</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preview Canvas */}
+                <div className="relative w-full aspect-[21/9] sm:aspect-[24/9] rounded-[16px] overflow-hidden bg-[#1E1B19] border border-white/20 flex items-center justify-center">
+                  {/* 1. Background Wallpaper Mode */}
+                  {previewDevice === 'background' ? (
+                    slide.background_image ? (
+                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+                        <img
+                          src={slide.background_image}
+                          alt="Background Wallpaper"
+                          style={previewTransformStyle}
+                          className="w-full h-full object-cover"
+                        />
+                        {activeOverlay > 0 && (
+                          <div
+                            className="absolute inset-0 pointer-events-none transition-opacity duration-200"
+                            style={{
+                              backgroundColor: '#000000',
+                              opacity: activeOverlay / 100,
+                            }}
+                          />
+                        )}
+                        {activeScrim && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+                        )}
+                        <div className="absolute top-2.5 right-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#C6A36A]/50 text-white text-[10px] font-bold flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-[#C6A36A]" />
+                          <span>معاينة صورة الخلفية الإضافية (Background Wallpaper)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 text-[#A89F91]">
+                        <Sparkles className="w-8 h-8 mx-auto mb-1 opacity-50 text-[#C6A36A]" />
+                        <p className="text-[11px]">لم يتم تحديد صورة خلفية إضافية بعد. يمكنك اختيارها من الحقل أعلاه.</p>
+                      </div>
+                    )
+                  ) : previewDevice === 'composite' ? (
+                    /* 2. Full Composite Scene Mode (Wallpaper Behind + Styled Banner in Front) */
+                    <div className="relative w-full h-full overflow-hidden flex items-center justify-center p-3 sm:p-5">
+                      {/* Ambient Wallpaper Layer */}
+                      {slide.background_image && (
+                        <div className="absolute inset-0 w-full h-full overflow-hidden">
+                          <img
+                            src={slide.background_image}
+                            alt=""
+                            className="w-full h-full object-cover filter blur-xs opacity-60 scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/40" />
+                        </div>
+                      )}
+
+                      {/* Foreground Banner Card */}
+                      <div className={`relative max-h-[85%] aspect-[16/9] sm:aspect-[21/9] ${getModalBorderRadiusClass(bannerBorderRadius)} overflow-hidden ${getModalShadowClass(bannerShadowStyle)} ${getModalBorderStyleClass(bannerBorderStyle)} bg-[#2F2B28] flex items-center justify-center z-10`}>
+                        {slide.desktop_image ? (
+                          <img
+                            src={slide.desktop_image}
+                            alt=""
+                            style={previewTransformStyle}
+                            className={`w-full h-full ${slide.image_fit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                          />
+                        ) : (
+                          <div className="p-3 text-center text-white/70 text-[10px]">اختر صورة سطح المكتب</div>
+                        )}
+                        {activeOverlay > 0 && (
+                          <div
+                            className="absolute inset-0 pointer-events-none"
+                            style={{ backgroundColor: '#000000', opacity: activeOverlay / 100 }}
+                          />
+                        )}
+                        {activeScrim && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                        )}
+                        <div className="absolute bottom-1.5 right-2 text-right pointer-events-none z-10 max-w-[80%]">
+                          <h5 className="text-[11px] font-extrabold text-white drop-shadow-md truncate">
+                            {slide.title_ar || 'العنوان الرئيسي'}
+                          </h5>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-2 right-2.5 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20 text-white text-[9px] font-bold flex items-center gap-1 z-20">
+                        <Layers className="w-2.5 h-2.5 text-[#C6A36A]" />
+                        <span>معاينة المشهد المركب (خلفية + إطار البنر)</span>
+                      </div>
+                    </div>
+                  ) : previewDevice === 'mobile' ? (
+                    /* 3. Mobile Device Framing Mode */
+                    <div className="relative w-full h-full overflow-hidden flex items-center justify-center p-2">
+                      <div className={`relative h-[90%] aspect-[9/16] max-w-[150px] ${getModalBorderRadiusClass(bannerBorderRadius)} overflow-hidden ${getModalShadowClass(bannerShadowStyle)} ${getModalBorderStyleClass(bannerBorderStyle)} bg-[#2F2B28] flex items-center justify-center`}>
+                        {activeImage ? (
+                          <img
+                            src={activeImage}
+                            alt="Mobile Preview"
+                            style={previewTransformStyle}
+                            className={`w-full h-full ${slide.image_fit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                          />
+                        ) : (
+                          <div className="p-2 text-center text-white/60 text-[9px]">اختر صورة</div>
+                        )}
+                        {activeOverlay > 0 && (
+                          <div
+                            className="absolute inset-0 pointer-events-none"
+                            style={{ backgroundColor: '#000000', opacity: activeOverlay / 100 }}
+                          />
+                        )}
+                        <div className="absolute bottom-1 right-1.5 text-right pointer-events-none z-10">
+                          <span className="text-[8px] font-bold text-white drop-shadow-sm truncate block max-w-[100px]">
+                            {slide.title_ar || 'الهيرو'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 4. Desktop Banner Mode with Applied Border & Shadow */
+                    activeImage ? (
+                      <div className="relative w-full h-full overflow-hidden flex items-center justify-center p-2 sm:p-3">
+                        <div className={`relative w-full h-full ${getModalBorderRadiusClass(bannerBorderRadius)} overflow-hidden ${getModalShadowClass(bannerShadowStyle)} ${getModalBorderStyleClass(bannerBorderStyle)} bg-[#2F2B28] flex items-center justify-center`}>
+                          <img
+                            src={activeImage}
+                            alt="Hero Preview"
+                            style={previewTransformStyle}
+                            className={`w-full h-full ${
+                              slide.image_fit === 'contain'
+                                ? `object-contain ${
+                                    slide.image_position === 'top'
+                                      ? 'object-top'
+                                      : slide.image_position === 'bottom'
+                                      ? 'object-bottom'
+                                      : 'object-center'
+                                  }`
+                                : `object-cover ${
+                                    slide.image_position === 'top'
+                                      ? 'object-top'
+                                      : slide.image_position === 'bottom'
+                                      ? 'object-bottom'
+                                      : 'object-center'
+                                  }`
+                            }`}
+                          />
+
+                          {/* Live Overlay */}
+                          {activeOverlay > 0 && (
+                            <div
+                              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
+                              style={{
+                                backgroundColor: '#000000',
+                                opacity: activeOverlay / 100,
+                              }}
+                            />
+                          )}
+
+                          {/* Live Scrim */}
+                          {activeScrim && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent pointer-events-none" />
+                          )}
+
+                          {/* Live Sample Text Badge */}
+                          <div className="absolute bottom-2.5 right-3 text-right pointer-events-none z-10 max-w-[70%]">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#C6A36A] text-[#2F2B28] mb-0.5 shadow-sm">
+                              {slide.badge_ar || 'معاينة تجريبية'}
+                            </span>
+                            <h5 className="text-xs sm:text-sm font-extrabold text-white drop-shadow-md truncate">
+                              {slide.title_ar || 'عنوان الهيرو الرئيسي'}
+                            </h5>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 text-[#A89F91]">
+                        <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                        <p className="text-[11px]">يرجى اختيار صورة أولاً لتفعيل المعاينة الحية</p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Sliders Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {/* 1. Blur Degree (0px to 20px) */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>درجة الضبابية والتمويه (Blur Amount):</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        activeBlur === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-[#F4ECE2] text-[#6F584A]'
+                      }`}>
+                        {activeBlur === 0 ? '0px (نقي 100% فائق الوضوح)' : `${activeBlur}px (تمويه)`}
+                      </span>
+                      {activeBlur > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, blur_amount: 0, background_blur: false }))}
+                          className="text-[10px] text-[#C6A36A] hover:underline font-bold cursor-pointer"
+                        >
+                          تصفية
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    step="1"
+                    value={activeBlur}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setSlide((prev) => ({
+                        ...prev,
+                        blur_amount: val,
+                        background_blur: val > 0,
+                      }));
+                    }}
+                    className="w-full accent-[#C6A36A] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#7C736D]">
+                    <span className="font-bold text-emerald-700">0px (وضوح فائق نقي)</span>
+                    <span>10px (تمويه متوسط)</span>
+                    <span>20px (ضبابي كثيف)</span>
+                  </div>
+                </div>
+
+                {/* 2. Brightness / Lighting (50% to 150%) */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <span>الإضاءة والسطوع (Brightness / Lighting):</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        activeBrightness === 100 ? 'bg-[#F4ECE2] text-[#6F584A]' : activeBrightness > 100 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800'
+                      }`}>
+                        {activeBrightness}%
+                      </span>
+                      {activeBrightness !== 100 && (
+                        <button
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, brightness: 100 }))}
+                          className="text-[10px] text-[#C6A36A] hover:underline font-bold cursor-pointer"
+                        >
+                          100%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="50"
+                    max="150"
+                    step="2"
+                    value={activeBrightness}
+                    onChange={(e) => setSlide((prev) => ({ ...prev, brightness: Number(e.target.value) }))}
+                    className="w-full accent-[#C6A36A] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#7C736D]">
+                    <span>50% (خافت)</span>
+                    <span className="font-bold text-[#2F2B28]">100% (طبيعي)</span>
+                    <span>150% (مضيء وساطع)</span>
+                  </div>
+                </div>
+
+                {/* 3. Contrast (50% to 150%) */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Contrast className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>التباين وعمق الألوان (Contrast):</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 bg-[#F4ECE2] text-[#6F584A] rounded-full text-[10px] font-mono font-bold">
+                        {activeContrast}%
+                      </span>
+                      {activeContrast !== 100 && (
+                        <button
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, contrast: 100 }))}
+                          className="text-[10px] text-[#C6A36A] hover:underline font-bold cursor-pointer"
+                        >
+                          100%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="50"
+                    max="150"
+                    step="2"
+                    value={activeContrast}
+                    onChange={(e) => setSlide((prev) => ({ ...prev, contrast: Number(e.target.value) }))}
+                    className="w-full accent-[#C6A36A] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#7C736D]">
+                    <span>50% (ناعم)</span>
+                    <span className="font-bold text-[#2F2B28]">100% (طبيعي)</span>
+                    <span>150% (تباين حاد ومشرق)</span>
+                  </div>
+                </div>
+
+                {/* 4. Zoom Scale (70% to 150%) */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <ZoomIn className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>درجة ملاءمة الزوم والتكبير (Zoom Scale):</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 bg-[#F4ECE2] text-[#6F584A] rounded-full text-[10px] font-mono font-bold">
+                        {activeZoom}%
+                      </span>
+                      {activeZoom !== 100 && (
+                        <button
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, zoom_scale: 100 }))}
+                          className="text-[10px] text-[#C6A36A] hover:underline font-bold cursor-pointer"
+                        >
+                          100%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="70"
+                    max="150"
+                    step="2"
+                    value={activeZoom}
+                    onChange={(e) => setSlide((prev) => ({ ...prev, zoom_scale: Number(e.target.value) }))}
+                    className="w-full accent-[#C6A36A] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#7C736D]">
+                    <span>70% (تصغير واحتواء أوسع)</span>
+                    <span className="font-bold text-[#2F2B28]">100% (الأبعاد الحقيقية)</span>
+                    <span>150% (تكبير مركز)</span>
+                  </div>
+                </div>
+
+                {/* 5. Overlay Tint (0% to 90%) */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>شفافية طبقة التعتيم (Overlay Tint):</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        activeOverlay === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-[#F4ECE2] text-[#6F584A]'
+                      }`}>
+                        {activeOverlay === 0 ? '0% (بدون تعتيم نهائياً)' : `${activeOverlay}%`}
+                      </span>
+                      {activeOverlay > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, overlay_opacity: 0 }))}
+                          className="text-[10px] text-[#C6A36A] hover:underline font-bold cursor-pointer"
+                        >
+                          0%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="90"
+                    step="5"
+                    value={activeOverlay}
+                    onChange={(e) => setSlide((prev) => ({ ...prev, overlay_opacity: Number(e.target.value) }))}
+                    className="w-full accent-[#C6A36A] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-[#7C736D]">
+                    <span className="font-bold text-emerald-700">0% (نقاء ووضوح تام)</span>
+                    <span>40% (تعتيم متوازن)</span>
+                    <span>90% (داكن جداً)</span>
+                  </div>
+                </div>
+
+                {/* 6. Toggles for Scrim & Ambient Backdrop */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] flex flex-col justify-between gap-2.5">
+                  <div>
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>خيارات التدرج والتوهج المحيطي:</span>
+                    </label>
+                    <p className="text-[10px] text-[#7C736D] mt-0.5">
+                      إلغاء التدرج يزيل أي ضبابية أو تعتيم محيطي ناتج عن القوالب السينمائية
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-1 border-t border-[#F4ECE2]">
+                    <label className="flex items-center justify-between p-2 rounded-[10px] bg-[#FBF8F3] border border-[#E7D4BC] cursor-pointer hover:bg-[#F4ECE2]">
+                      <span className="text-[11px] font-semibold text-[#2F2B28]">
+                        تفعيل التدرج السينمائي المحيطي (Scrim Gradient)
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={activeScrim}
+                        onChange={(e) => setSlide((prev) => ({ ...prev, show_scrim_gradient: e.target.checked }))}
+                        className="w-4 h-4 accent-[#C6A36A] rounded cursor-pointer"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-[10px] bg-[#FBF8F3] border border-[#E7D4BC] cursor-pointer hover:bg-[#F4ECE2]">
+                      <span className="text-[11px] font-semibold text-[#2F2B28]">
+                        تفعيل انعكاس الخلفية المموهة (Ambient Backdrop Blur)
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(slide.ambient_blur_layer)}
+                        onChange={(e) => setSlide((prev) => ({ ...prev, ambient_blur_layer: e.target.checked }))}
+                        className="w-4 h-4 accent-[#C6A36A] rounded cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Banner Border & Edge Styling Studio */}
+            <div className="p-4 sm:p-5 rounded-[20px] bg-[#FBF8F3] border-2 border-[#C6A36A]/50 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E7D4BC] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-[#C6A36A]/20 flex items-center justify-center text-[#8A7465]">
+                    <Box className="w-4 h-4 text-[#C6A36A]" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#2F2B28] text-xs sm:text-sm flex items-center gap-1.5">
+                      <span>استوديو حواف وإطارات صورة البنر (Border & Edge Styling)</span>
+                      <span className="bg-[#2F2B28] text-[#C6A36A] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        خيارات متعددة
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-[#7C736D]">
+                      تحكم كامل بحواف وإطار صورة البنر: بدون حدود، زجاجي شفاف، مصقول، ذهبي ملكي، وتوهج عائم
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* A. Border Style Options */}
+              <div className="space-y-2">
+                <label className="block font-bold text-xs text-[#2F2B28] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Gem className="w-3.5 h-3.5 text-[#C6A36A]" />
+                    <span>نمط إطار وحواف البنر (Banner Border Style):</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-[#C6A36A] font-bold">
+                    {slide.banner_border_style === 'none'
+                      ? 'بدون حدود (خالي تماماً)'
+                      : slide.banner_border_style === 'glass'
+                      ? 'زجاجي شفاف (Glassmorphism)'
+                      : slide.banner_border_style === 'polished'
+                      ? 'مصقول معدني فاخر'
+                      : slide.banner_border_style === 'gold_luxury'
+                      ? 'إطار ذهبي ملكي'
+                      : slide.banner_border_style === 'floating_glow'
+                      ? 'توهج عائم مضيء'
+                      : slide.banner_border_style === 'vintage_bevel'
+                      ? 'مشطوف كلاسيكي'
+                      : 'بطاقة بيضاء نقية'}
+                  </span>
+                </label>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                  {[
+                    {
+                      id: 'none',
+                      label: 'بدون حدود',
+                      sub: 'حواف حرة ممتدة بنقاء',
+                      icon: '▫️',
+                      previewBg: 'bg-[#2F2B28]',
+                      previewBorder: 'border-0',
+                    },
+                    {
+                      id: 'glass',
+                      label: 'زجاجي شفاف',
+                      sub: 'تأثير زجاجي مصنفر ولمعان',
+                      icon: '🧊',
+                      previewBg: 'bg-white/20 backdrop-blur-md',
+                      previewBorder: 'border-2 border-white/70',
+                    },
+                    {
+                      id: 'polished',
+                      label: 'مصقول فاخر',
+                      sub: 'حواف مصقولة ببريق ذهبي ناعم',
+                      icon: '✨',
+                      previewBg: 'bg-[#2F2B28]',
+                      previewBorder: 'border-2 border-[#D9C1A7] ring-2 ring-[#C6A36A]/40',
+                    },
+                    {
+                      id: 'gold_luxury',
+                      label: 'ذهبي ملكي',
+                      sub: 'إطار ذهبي صريح بارز',
+                      icon: '👑',
+                      previewBg: 'bg-[#2F2B28]',
+                      previewBorder: 'border-2 border-[#C6A36A]',
+                    },
+                    {
+                      id: 'floating_glow',
+                      label: 'توهج عائم',
+                      sub: 'هالة ضوئية ذهبية مشعة',
+                      icon: '💫',
+                      previewBg: 'bg-[#2F2B28]',
+                      previewBorder: 'border border-[#C6A36A]/70 shadow-[0_0_12px_rgba(198,163,106,0.5)]',
+                    },
+                    {
+                      id: 'subtle_card',
+                      label: 'بطاقة نقية',
+                      sub: 'إطار أبيض ناصع كلاسيكي',
+                      icon: '🃏',
+                      previewBg: 'bg-[#2F2B28]',
+                      previewBorder: 'border-3 border-white',
+                    },
+                    {
+                      id: 'vintage_bevel',
+                      label: 'مشطوف فاخر',
+                      sub: 'إطار مزدوج مشطوف كلاسيكي',
+                      icon: '🏛️',
+                      previewBg: 'bg-[#2F2B28]',
+                      previewBorder: 'border-3 border-[#F4ECE2] ring-1 ring-[#8A7465]/40',
+                    },
+                  ].map((style) => {
+                    const isSelected = (slide.banner_border_style || 'subtle_card') === style.id;
+                    return (
+                      <button
+                        key={style.id}
+                        type="button"
+                        onClick={() => setSlide((prev) => ({ ...prev, banner_border_style: style.id as any }))}
+                        className={`p-2.5 rounded-[14px] text-right transition-all border flex flex-col justify-between gap-1.5 cursor-pointer relative overflow-hidden ${
+                          isSelected
+                            ? 'border-[#2F2B28] bg-[#2F2B28] text-white shadow-md ring-2 ring-[#C6A36A]'
+                            : 'border-[#E7D4BC] bg-white text-[#2F2B28] hover:border-[#C6A36A]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-bold text-xs flex items-center gap-1.5">
+                            <span>{style.icon}</span>
+                            <span>{style.label}</span>
+                          </span>
+                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#C6A36A] bg-[#C6A36A]' : 'border-current'}`}>
+                            {isSelected && <Check className="w-2.5 h-2.5 text-[#2F2B28]" />}
+                          </div>
+                        </div>
+
+                        {/* Visual Micro Preview Box */}
+                        <div className="w-full h-8 rounded-[8px] bg-[#1E1B19] p-1 flex items-center justify-center my-0.5">
+                          <div className={`w-full h-full rounded-[6px] ${style.previewBg} ${style.previewBorder} flex items-center justify-center`}>
+                            <span className="text-[9px] text-[#C6A36A] font-bold">عينة</span>
+                          </div>
+                        </div>
+
+                        <span className={`text-[10px] leading-tight block ${isSelected ? 'text-[#E7D4BC]' : 'text-[#7C736D]'}`}>
+                          {style.sub}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* B. Border Radius & C. Shadow Depth Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {/* Border Radius */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Square className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>استدارة الحواف (Corner Radius):</span>
+                    </label>
+                    <span className="px-2 py-0.5 bg-[#F4ECE2] text-[#6F584A] rounded-full text-[10px] font-mono font-bold">
+                      {slide.banner_border_radius === 'none'
+                        ? '0px (حادة مستقيمة)'
+                        : slide.banner_border_radius === 'sm'
+                        ? '8px (خفيفة)'
+                        : slide.banner_border_radius === 'md'
+                        ? '16px (متوسطة)'
+                        : slide.banner_border_radius === 'pill'
+                        ? '36px (دائرية فائقة)'
+                        : '24px (عريضة حديثة)'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { id: 'none', label: 'حادة 0px', icon: '📐' },
+                      { id: 'sm', label: 'ناعمة 8px', icon: '🔲' },
+                      { id: 'md', label: 'متوسطة 16px', icon: '🔘' },
+                      { id: 'lg', label: 'عريضة 24px', icon: '⭕' },
+                      { id: 'pill', label: 'دائرية 36px', icon: '💊' },
+                    ].map((radius) => {
+                      const isSelected = (slide.banner_border_radius || 'lg') === radius.id;
+                      return (
+                        <button
+                          key={radius.id}
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, banner_border_radius: radius.id as any }))}
+                          className={`p-2 rounded-[10px] text-center border text-[10px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                            isSelected
+                              ? 'bg-[#2F2B28] text-white border-[#2F2B28] ring-2 ring-[#C6A36A]'
+                              : 'bg-[#FBF8F3] text-[#2F2B28] border-[#E7D4BC] hover:bg-[#F4ECE2]'
+                          }`}
+                        >
+                          <span className="text-xs">{radius.icon}</span>
+                          <span className="truncate">{radius.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Shadow & Elevation */}
+                <div className="bg-white p-3.5 rounded-[16px] border border-[#E7D4BC] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-[#2F2B28] flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#C6A36A]" />
+                      <span>الظلال والعمق (Elevation & Shadow):</span>
+                    </label>
+                    <span className="px-2 py-0.5 bg-[#F4ECE2] text-[#6F584A] rounded-full text-[10px] font-mono font-bold">
+                      {slide.banner_shadow_style === 'none'
+                        ? 'بدون ظل (Flat)'
+                        : slide.banner_shadow_style === 'soft'
+                        ? 'ظل خفيف (Soft)'
+                        : slide.banner_shadow_style === 'golden_glow'
+                        ? 'هالة ذهبية (Gold Aura)'
+                        : 'ظل عميق 3D (Deep)'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { id: 'none', label: 'مسطح Flat', icon: '◽' },
+                      { id: 'soft', label: 'ظل ناعم Soft', icon: '☁️' },
+                      { id: 'deep', label: 'عميق 3D Deep', icon: '🕶️' },
+                      { id: 'golden_glow', label: 'هالة ذهبية Gold', icon: '🌟' },
+                    ].map((shadow) => {
+                      const isSelected = (slide.banner_shadow_style || 'deep') === shadow.id;
+                      return (
+                        <button
+                          key={shadow.id}
+                          type="button"
+                          onClick={() => setSlide((prev) => ({ ...prev, banner_shadow_style: shadow.id as any }))}
+                          className={`p-2 rounded-[10px] text-center border text-[10px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                            isSelected
+                              ? 'bg-[#2F2B28] text-white border-[#2F2B28] ring-2 ring-[#C6A36A]'
+                              : 'bg-[#FBF8F3] text-[#2F2B28] border-[#E7D4BC] hover:bg-[#F4ECE2]'
+                          }`}
+                        >
+                          <span className="text-xs">{shadow.icon}</span>
+                          <span className="truncate">{shadow.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Texts & Titles */}
             <div className="p-4 sm:p-5 rounded-[20px] bg-[#FBF8F3] border border-[#E7D4BC] space-y-4">
               <h4 className="font-bold text-[#2F2B28] text-xs sm:text-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#C6A36A]" />

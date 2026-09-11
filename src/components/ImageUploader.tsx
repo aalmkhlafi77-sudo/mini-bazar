@@ -9,6 +9,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Link2,
+  Loader2,
 } from 'lucide-react';
 import { imageUploadService, inspectImageContent } from '../services/imageUploadService';
 
@@ -56,15 +57,23 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const [directUrl, setDirectUrl] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [localFit, setLocalFit] = useState<'cover' | 'contain' | 'full_width'>(imageFit || 'cover');
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [instantPreview, setInstantPreview] = useState<string | null>(null);
 
   // Active image: prioritize controlled value, then currentImageUrl
   const activeImage = value !== undefined ? value : currentImageUrl || '';
   const currentFit = imageFit || localFit;
+  const displayImage = instantPreview || activeImage;
+
+  // Reset image load error whenever the active image changes
+  useEffect(() => {
+    setImageLoadError(false);
+  }, [activeImage]);
 
   // Detect whether the current image is an un-uploaded local preview (Base64/blob)
   const isLocalPreview =
-    Boolean(activeImage) &&
-    (activeImage.startsWith('data:') || activeImage.startsWith('blob:'));
+    Boolean(displayImage) &&
+    (displayImage.startsWith('data:') || displayImage.startsWith('blob:'));
 
   // Keep local fit in sync with prop if prop changes
   useEffect(() => {
@@ -111,6 +120,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       return;
     }
 
+    // Immediately create local object URL for instant, flicker-free preview
+    const localBlobUrl = URL.createObjectURL(file);
+    setInstantPreview(localBlobUrl);
+    setImageLoadError(false);
     setIsProcessing(true);
     setUploadProgress(20);
     setStatusMessage(null);
@@ -154,6 +167,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         type: 'error',
       });
     } finally {
+      if (localBlobUrl) {
+        URL.revokeObjectURL(localBlobUrl);
+      }
+      setInstantPreview(null);
       setIsProcessing(false);
       setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -306,33 +323,65 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       >
         {/* Visual Preview Container */}
         <div className="relative shrink-0 flex items-center justify-center">
-          {activeImage && activeImage.trim() !== '' ? (
+          {displayImage && displayImage.trim() !== '' ? (
             <div
               className={`relative overflow-hidden bg-white border border-[#E7D4BC] shadow-xs flex items-center justify-center ${getAspectClass()}`}
             >
-              <img
-                src={activeImage}
-                alt="معاينة الصورة"
-                className={`w-full h-full transition-all ${
-                  currentFit === 'contain'
-                    ? 'object-contain p-1.5'
-                    : currentFit === 'full_width'
-                    ? 'object-cover scale-x-105'
-                    : 'object-cover'
-                } object-center`}
-              />
+              {imageLoadError ? (
+                <div className="flex flex-col items-center justify-center p-2 text-center text-[#8A7465] w-full h-full bg-[#FAF5EE]">
+                  <AlertCircle className="w-6 h-6 text-[#B4574A] mb-1 shrink-0" />
+                  <span className="text-[10px] font-bold text-[#6F584A]">الصورة غير متاحة</span>
+                  <span className="text-[9px] text-[#A8988B] mt-0.5">انقر لاختيار صورة أخرى</span>
+                </div>
+              ) : (
+                <img
+                  src={displayImage}
+                  alt="معاينة الصورة"
+                  onError={() => {
+                    if (!instantPreview) {
+                      setImageLoadError(true);
+                    }
+                  }}
+                  onLoad={() => setImageLoadError(false)}
+                  className={`w-full h-full transition-all ${
+                    currentFit === 'contain'
+                      ? 'object-contain p-1.5'
+                      : currentFit === 'full_width'
+                      ? 'object-cover scale-x-105'
+                      : 'object-cover'
+                  } object-center`}
+                />
+              )}
+
+              {/* Progress & Processing Overlay */}
+              {isProcessing && (
+                <div className="absolute inset-0 bg-[#2F2B28]/60 backdrop-blur-2xs flex flex-col items-center justify-center text-white z-20 px-2 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#E5C483] mb-1.5" />
+                  <span className="text-[11px] font-bold">
+                    {uploadProgress ? `جارٍ الرفع ${uploadProgress}%` : 'جارٍ المعالجة...'}
+                  </span>
+                </div>
+              )}
+
               {/* Remove Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  triggerChange('');
-                  setStatusMessage(null);
-                }}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-md transition-transform active:scale-90"
-                title="إزالة الصورة"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              {!isProcessing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (instantPreview) {
+                      URL.revokeObjectURL(instantPreview);
+                      setInstantPreview(null);
+                    }
+                    setImageLoadError(false);
+                    triggerChange('');
+                    setStatusMessage(null);
+                  }}
+                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-md transition-transform active:scale-90 z-20"
+                  title="إزالة الصورة"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ) : (
             <div

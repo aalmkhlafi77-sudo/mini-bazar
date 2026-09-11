@@ -7,9 +7,12 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Role-Based Access Control: Real Firebase Custom Claims
+    // Role-Based Access Control: Real Firebase Custom Claims or Verified Store Owner Email
     function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'a.almkhlafi77@gmail.com'
+      );
     }
 
     // MIME type check: Restrict strictly to standard web raster image formats (JPEG, PNG, WebP, GIF)

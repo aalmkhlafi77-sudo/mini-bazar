@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Store product with prices, images, brand and category references",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name_ar": { "type": "string" },
+        "description_ar": { "type": "string" },
+        "price": { "type": "number" },
+        "original_price": { "type": "number" },
+        "category_id": { "type": "string" },
+        "brand_id": { "type": "string" },
+        "images": { "type": "array" },
+        "in_stock": { "type": "boolean" },
+        "is_featured": { "type": "boolean" },
+        "is_new": { "type": "boolean" },
+        "rating": { "type": "number" },
+        "reviews_count": { "type": "number" }
+      },
+      "required": ["id", "name_ar", "price", "category_id"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name_ar": { "type": "string" },
+        "description_ar": { "type": "string" },
+        "image": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name_ar"]
+    },
+    "Brand": {
+      "title": "Brand",
+      "description": "Product brand or manufacturer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name_ar": { "type": "string" },
+        "name_en": { "type": "string" },
+        "logo": { "type": "string" }
+      },
+      "required": ["id", "name_ar"]
+    },
+    "HeroSlide": {
+      "title": "HeroSlide",
+      "description": "Promotional banner slide for homepage carousel",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title_ar": { "type": "string" },
+        "subtitle_ar": { "type": "string" },
+        "desktop_image": { "type": "string" },
+        "mobile_image": { "type": "string" },
+        "badge_text_ar": { "type": "string" },
+        "button_text_ar": { "type": "string" },
+        "link_target": { "type": "string" },
+        "is_active": { "type": "boolean" },
+        "display_order": { "type": "number" }
+      },
+      "required": ["id", "title_ar"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order placed in the store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "order_number": { "type": "string" },
+        "customer_name_snapshot": { "type": "string" },
+        "customer_phone_snapshot": { "type": "string" },
+        "customer_email_snapshot": { "type": "string" },
+        "address_snapshot": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "delivery_fee": { "type": "number" },
+        "discount_total": { "type": "number" },
+        "grand_total": { "type": "number" },
+        "delivery_method_snapshot": { "type": "string" },
+        "payment_method_snapshot": { "type": "string" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" },
+        "receipt_image": { "type": "string" },
+        "bank_transfer_confirmed": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "items": { "type": "array" }
+      },
+      "required": ["id", "customer_name_snapshot", "customer_phone_snapshot", "grand_total"]
+    },
+    "StoreSetting": {
+      "title": "StoreSetting",
+      "description": "Store configuration and theme settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "settings": { "type": "object" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog products accessible publicly and managed by administrators"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Store categories list"
+    },
+    "/brands/{brandId}": {
+      "schema": "Brand",
+      "description": "Store brands list"
+    },
+    "/hero_slides/{slideId}": {
+      "schema": "HeroSlide",
+      "description": "Homepage promotional carousel slides"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders submitted from checkout"
+    },
+    "/store_settings/{settingId}": {
+      "schema": "StoreSetting",
+      "description": "Store general and theme settings"
+    }
+  }
+}

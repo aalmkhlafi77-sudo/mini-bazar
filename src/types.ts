@@ -213,6 +213,12 @@ export interface HeroSlide {
   background_value: string;
   background_image?: string;
   background_blur?: boolean;
+  blur_amount?: number; // 0 to 20 (px) - 0 = ultra clear, 20 = heavy blur
+  brightness?: number; // 50 to 150 (%) - 100% is normal
+  contrast?: number; // 50 to 150 (%) - 100% is normal
+  zoom_scale?: number; // 70 to 150 (%) - 100% is normal
+  show_scrim_gradient?: boolean; // toggle dark/light atmospheric gradient scrim
+  ambient_blur_layer?: boolean; // toggle background ambient glow/blur reflection
   overlay_opacity?: number; // 0 to 90
   title_color?: string;
   description_color?: string;
@@ -229,6 +235,9 @@ export interface HeroSlide {
   particles_effect?: 'none' | 'golden_sparkles' | 'luxury_dust' | 'floating_stars' | 'ambient_glow';
   particles_density?: 'low' | 'medium' | 'high';
   particles_speed?: 'slow' | 'normal' | 'fast';
+  banner_border_style?: 'none' | 'glass' | 'polished' | 'gold_luxury' | 'floating_glow' | 'subtle_card' | 'vintage_bevel';
+  banner_border_radius?: 'none' | 'sm' | 'md' | 'lg' | 'pill';
+  banner_shadow_style?: 'none' | 'soft' | 'deep' | 'golden_glow';
   is_visible: boolean;
   sort_order: number;
 }
@@ -418,17 +427,7 @@ export interface PageSection {
 
 export interface AdminCredentials {
   username: string;
-  password_hash: string;
-  password_salt: string;
-  security_question: string;
-  security_answer_hash: string;
-  security_answer_salt: string;
-  recovery_email: string;
-  recovery_pin_hash: string;
-  recovery_pin_salt: string;
-  last_updated?: string;
-  // Deprecated plain-text fields for backward-compatibility / seamless migration
-  password?: string;
-  security_answer?: string;
-  recovery_pin?: string;
+  email: string;
+  security_question?: string;
+  recovery_email?: string;
 }

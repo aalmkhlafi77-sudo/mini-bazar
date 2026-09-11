@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "vitest run tests/security-rules.test.ts tests/image-upload-service.test.ts",
+    "test": "vitest run tests/security-rules.test.ts tests/image-upload-service.test.ts tests/admin-claim.test.ts",
     "test:rules": "vitest run tests/security-rules.test.ts",
     "test:integration": "vitest run tests/rules-integration.test.ts",
     "test:emulator": "firebase emulators:exec --only firestore,storage \"vitest run tests/rules-integration.test.ts\""
@@ -37,6 +37,8 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "firebase-admin": "^14.3.0",
+    "playwright": "^1.63.0",
+    "puppeteer": "^25.10.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
