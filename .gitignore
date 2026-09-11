@@ -66,3 +66,4 @@ Thumbs.db
 *.sln
 *.sw?
 
+*-firebase-adminsdk-*.json

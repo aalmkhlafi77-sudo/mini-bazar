@@ -1,54 +1,48 @@
 /**
- * Secure Admin Custom Claim Provisioning Script
- * 
- * Usage:
- *   node scripts/set-admin-claim.mjs <ADMIN_UID_OR_EMAIL>
- * 
- * Requirements:
- *   1. Set GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccountKey.json
- *      OR run in a Cloud environment with Default Application Credentials (ADC).
- *   2. NEVER include service account keys or Admin SDK in client-side / React bundle.
+ * يمنح مستخدم Firebase Authentication صلاحية لوحة الإدارة.
+ * الاستخدام:
+ * node scripts/set-admin-claim.mjs <EMAIL_OR_UID>
+ *
+ * يتطلب متغير GOOGLE_APPLICATION_CREDENTIALS مشيراً إلى ملف مفتاح الخدمة.
  */
 
-import admin from 'firebase-admin';
+import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
+if (getApps().length === 0) {
+  initializeApp({
+    credential: applicationDefault(),
+    projectId: 'mini-bazar-demo',
   });
 }
 
-async function setAdminClaim(targetIdentifier) {
-  if (!targetIdentifier) {
-    console.error('❌ Error: Please provide an admin UID or Email.');
-    console.log('Usage: node scripts/set-admin-claim.mjs <UID_OR_EMAIL>');
+const auth = getAuth();
+
+async function setAdminClaim(identifier) {
+  if (!identifier) {
+    console.error('❌ أدخل البريد الإلكتروني أو UID للمستخدم.');
     process.exit(1);
   }
 
   try {
-    let user;
-    if (targetIdentifier.includes('@')) {
-      user = await admin.auth().getUserByEmail(targetIdentifier);
-    } else {
-      user = await admin.auth().getUser(targetIdentifier);
-    }
+    const user = identifier.includes('@')
+      ? await auth.getUserByEmail(identifier)
+      : await auth.getUser(identifier);
 
-    console.log(`🔍 Found user: ${user.email} (UID: ${user.uid})`);
+    const existingClaims = user.customClaims ?? {};
 
-    // Assign custom claim: { admin: true }
-    await admin.auth().setCustomUserClaims(user.uid, {
+    await auth.setCustomUserClaims(user.uid, {
+      ...existingClaims,
       admin: true,
       role: 'admin',
     });
 
-    console.log(`✅ Success! Custom claim { admin: true } assigned to ${user.email}.`);
-    console.log('ℹ️ The user should re-login or refresh their ID token to receive the updated claim.');
+    console.log(`✅ مُنحت صلاحية admin للمستخدم: ${user.email} (${user.uid})`);
+    console.log('سجّل الخروج ثم الدخول مجدداً لتحديث رمز الجلسة.');
   } catch (error) {
-    console.error('❌ Failed to assign admin claim:', error.message);
+    console.error('❌ تعذر منح صلاحية المشرف:', error.message);
     process.exit(1);
   }
 }
 
-const target = process.argv[2];
-setAdminClaim(target);
+await setAdminClaim(process.argv[2]);
