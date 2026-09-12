@@ -1,0 +1,62 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v4
+
+      - name: Prepare Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_DATABASE_ID: ${{ secrets.VITE_FIREBASE_DATABASE_ID }}
+          VITE_UPLOAD_ENDPOINT: ${{ secrets.VITE_UPLOAD_ENDPOINT }}
+
+      - name: Install secure transfer tool
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Upload website to Hostinger
+        env:
+          HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+          USERNAME: ${{ secrets.HOSTINGER_SSH_USERNAME }}
+          PASSWORD: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          TARGET: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+        run: |
+          lftp <<EOF
+          set cmd:fail-exit yes
+          set sftp:auto-confirm yes
+          open -u "$USERNAME","$PASSWORD" sftp://$HOST:$PORT
+          mkdir -p $TARGET
+          mirror --reverse --verbose --only-newer dist/ $TARGET
+          mkdir -p $TARGET/api
+          put public/api/upload.php -o $TARGET/api/upload.php
+          mkdir -p $TARGET/uploads
+          put public/uploads/.htaccess -o $TARGET/uploads/.htaccess
+          bye
+          EOF
