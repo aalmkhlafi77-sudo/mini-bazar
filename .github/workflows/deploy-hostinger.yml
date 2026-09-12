@@ -52,11 +52,11 @@ jobs:
           set cmd:fail-exit yes
           set sftp:auto-confirm yes
           open -u "$USERNAME","$PASSWORD" sftp://$HOST:$PORT
-          mkdir -p $TARGET
-          mirror --reverse --verbose --only-newer dist/ $TARGET
-          mkdir -p $TARGET/api
-          put public/api/upload.php -o $TARGET/api/upload.php
-          mkdir -p $TARGET/uploads
-          put public/uploads/.htaccess -o $TARGET/uploads/.htaccess
+          cd $TARGET
+          mkdir -p api
+          mkdir -p uploads
+          mirror --reverse --verbose --only-newer dist/ .
+          put public/api/upload.php -o api/upload.php
+          put public/uploads/.htaccess -o uploads/.htaccess
           bye
           EOF
