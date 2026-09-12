@@ -53,8 +53,7 @@ jobs:
           set sftp:auto-confirm yes
           open -u "$USERNAME","$PASSWORD" sftp://$HOST:$PORT
           cd $TARGET
-          mkdir -p api
-          mkdir -p uploads
+          mkdir -p -f api uploads
           mirror --reverse --verbose --only-newer dist/ .
           put public/api/upload.php -o api/upload.php
           put public/uploads/.htaccess -o uploads/.htaccess
